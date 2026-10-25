@@ -73,12 +73,14 @@ describe('Math Bubble Rush — 12 State Invariants Verification', () => {
     if (state.status !== 'playing') return;
 
     const { correctOrderIds } = state.question;
-    engine.tapBubble(correctOrderIds[1]); // Wrong (middle instead of smallest)
-    expect(engine.getStats().correctSelections).toBe(0);
-
-    // Expected value must still be bubble 0
+    // Tap 3 bubbles in incorrect order
+    engine.tapBubble(correctOrderIds[1]);
     engine.tapBubble(correctOrderIds[0]);
-    expect(engine.getStats().correctSelections).toBe(1);
+    engine.tapBubble(correctOrderIds[2]);
+
+    expect(engine.getStats().completedQuestions).toBe(0);
+    expect(engine.getStats().incorrectTaps).toBe(1);
+    expect(engine.getStats().wrongQuestions?.length).toBe(1);
 
     engine.destroy();
   });
@@ -94,7 +96,7 @@ describe('Math Bubble Rush — 12 State Invariants Verification', () => {
     engine.tapBubble(correctOrderIds[1]);
     engine.tapBubble(correctOrderIds[2]);
 
-    expect(engine.getState().status).toBe('question_complete');
+    expect(engine.getState().status).toBe('evaluation_feedback');
     const compBefore = engine.getStats().completedQuestions;
 
     // Late taps must not resolve again
@@ -176,9 +178,9 @@ describe('Math Bubble Rush — 12 State Invariants Verification', () => {
     if (s.status === 'playing') {
       engine.tapBubble(s.question.correctOrderIds[0]);
       engine.tapBubble(s.question.correctOrderIds[2]); // incorrect
+      engine.tapBubble(s.question.correctOrderIds[1]); // complete 3 bubbles
     }
 
-    expect(engine.getStats().correctSelections).toBe(1);
     expect(engine.getStats().incorrectTaps).toBe(1);
 
     engine.replay();

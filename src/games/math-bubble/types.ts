@@ -38,6 +38,15 @@ export interface MathQuestion {
   difficultyTier: DifficultyTier;
 }
 
+export interface MathQuestionReview {
+  questionIndex: number;
+  bubbles: MathBubble[];
+  userOrderIds: string[];
+  correctOrderIds: string[];
+  isCorrect: boolean;
+  isTimedOut: boolean;
+}
+
 export interface MathSessionStats {
   totalQuestions: number; // 25
   attemptedQuestions: number;
@@ -51,6 +60,7 @@ export interface MathSessionStats {
   highestDifficultyTier: number;
   score: number;
   accuracy: number;
+  wrongQuestions?: MathQuestionReview[];
 }
 
 export type MathBubbleState =
@@ -60,10 +70,18 @@ export type MathBubbleState =
       status: 'playing';
       questionIndex: number;
       question: MathQuestion;
-      selectedIds: string[]; // IDs of correctly tapped bubbles in current question
+      selectedIds: string[]; // IDs of bubbles selected in current question
       remainingMs: number;
       penaltyCount: number;
       incorrectBubbleId: string | null;
+    }
+  | {
+      status: 'evaluation_feedback';
+      questionIndex: number;
+      question: MathQuestion;
+      selectedIds: string[];
+      isCorrect: boolean;
+      remainingMs: number;
     }
   | {
       status: 'correct_feedback';
@@ -75,7 +93,7 @@ export type MathBubbleState =
       lastCorrectId: string;
     }
   | {
-      status: 'selection_feedback'; // backwards compatibility alias if needed
+      status: 'selection_feedback';
       questionIndex: number;
       question: MathQuestion;
       selectedIds: string[];

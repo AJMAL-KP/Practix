@@ -26,14 +26,14 @@ describe('Math Bubble Rush — Selection & State Transition Tests', () => {
 
     // Third tap: highest bubble -> completes question
     engine.tapBubble(correctOrderIds[2]);
-    expect(engine.getState().status).toBe('question_complete');
+    expect(engine.getState().status).toBe('evaluation_feedback');
     expect(engine.getStats().correctSelections).toBe(3);
     expect(engine.getStats().completedQuestions).toBe(1);
 
     engine.destroy();
   });
 
-  it('incorrect tap increments penalty counter without advancing expected selection', () => {
+  it('incorrect 3-bubble sequence triggers evaluation_feedback and tracks wrong question', () => {
     const engine = new MathBubbleEngine();
     engine.startSession(15, 666);
 
@@ -42,18 +42,14 @@ describe('Math Bubble Rush — Selection & State Transition Tests', () => {
 
     const { correctOrderIds } = state.question;
 
-    // Tap highest bubble first (wrong)
+    // Tap in wrong order: highest, then lowest, then middle
     engine.tapBubble(correctOrderIds[2]);
+    engine.tapBubble(correctOrderIds[0]);
+    engine.tapBubble(correctOrderIds[1]);
 
     expect(engine.getStats().incorrectTaps).toBe(1);
-    expect(engine.getStats().penaltyPoints).toBe(1);
-    expect(engine.getStats().correctSelections).toBe(0);
-
-    // Question must still be solvable with the original lowest bubble
-    engine.tapBubble(correctOrderIds[0]);
-    const curr = engine.getState() as any;
-    expect(curr.selectedIds).toEqual([correctOrderIds[0]]);
-    expect(engine.getStats().correctSelections).toBe(1);
+    expect(engine.getState().status).toBe('evaluation_feedback');
+    expect(engine.getStats().wrongQuestions?.length).toBe(1);
 
     engine.destroy();
   });
@@ -83,7 +79,7 @@ describe('Math Bubble Rush — Selection & State Transition Tests', () => {
     engine.destroy();
   });
 
-  it('ignores all taps once question is resolved (question_complete)', () => {
+  it('ignores all taps once question is resolved (evaluation_feedback)', () => {
     const engine = new MathBubbleEngine();
     engine.startSession(15, 888);
 
@@ -95,7 +91,7 @@ describe('Math Bubble Rush — Selection & State Transition Tests', () => {
     engine.tapBubble(correctOrderIds[1]);
     engine.tapBubble(correctOrderIds[2]);
 
-    expect(engine.getState().status).toBe('question_complete');
+    expect(engine.getState().status).toBe('evaluation_feedback');
     const statsBefore = { ...engine.getStats() };
 
     // Attempt late taps
@@ -103,7 +99,7 @@ describe('Math Bubble Rush — Selection & State Transition Tests', () => {
     engine.tapBubble(correctOrderIds[1]);
     engine.tapBubble('non_existent_bubble');
 
-    expect(engine.getState().status).toBe('question_complete');
+    expect(engine.getState().status).toBe('evaluation_feedback');
     expect(engine.getStats().totalCountedTaps).toBe(statsBefore.totalCountedTaps);
     expect(engine.getStats().incorrectTaps).toBe(statsBefore.incorrectTaps);
 

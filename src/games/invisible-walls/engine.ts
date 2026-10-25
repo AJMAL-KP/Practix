@@ -116,9 +116,8 @@ export class InvisibleWallsEngine {
     this.sessionResultCommitted = false;
     this.isProcessingMove = false;
 
-    if (seed !== undefined) {
-      this.generator = new InvisibleMazeGenerator(seed);
-    }
+    const finalSeed = seed ?? Math.floor(Math.random() * 1000000) + 1;
+    this.generator = new InvisibleMazeGenerator(finalSeed);
 
     const settings = StorageService.getSettings();
     const durationSec = customDurationSec ?? settings.invisibleLevelDurationSec;
@@ -145,6 +144,10 @@ export class InvisibleWallsEngine {
     };
 
     this.startLevel(1);
+  }
+
+  replay(): void {
+    this.startSession();
   }
 
   private startLevel(lvl: number): void {

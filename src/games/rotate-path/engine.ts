@@ -97,7 +97,8 @@ export class RotatePathEngine {
     this.timer.stop();
     this.sessionCommitted = false;
 
-    this.generator = new RotatePathGenerator(seed);
+    const finalSeed = seed ?? Math.floor(Math.random() * 1000000) + 1;
+    this.generator = new RotatePathGenerator(finalSeed);
 
     const settings = StorageService.getSettings();
     const durationSec = customDurationSec ?? settings.rotateLevelDurationSec ?? 240;

@@ -43,14 +43,12 @@ describe('Invisible Walls — Generator & Solvability Validation', () => {
     }
   });
 
-  it('produces reasonable wall density and variety across levels', () => {
+  it('produces exactly 9 wall blocks per grid preventing straight movements', () => {
     const generator = new InvisibleMazeGenerator(888);
-    const mazeL1 = generator.generateMaze(1);
-    const mazeL5 = generator.generateMaze(5);
-
-    // Wall count should generally be higher in level 5 than in level 1
-    expect(mazeL1.walls.size).toBeGreaterThanOrEqual(5);
-    expect(mazeL5.walls.size).toBeGreaterThan(mazeL1.walls.size);
+    for (let lvl = 1; lvl <= 5; lvl++) {
+      const maze = generator.generateMaze(lvl);
+      expect(maze.walls.size).toBe(9);
+    }
   });
 
   it('fallback generator produces a fully valid, solvable maze', () => {

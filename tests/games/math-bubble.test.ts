@@ -58,13 +58,16 @@ describe('Math Bubble Rush', () => {
     // Tap third correct bubble
     engine.tapBubble(correctOrderIds[2]);
     const completedState = engine.getState();
-    expect(completedState.status).toBe('question_complete');
+    expect(completedState.status).toBe('evaluation_feedback');
+    if (completedState.status === 'evaluation_feedback') {
+      expect(completedState.isCorrect).toBe(true);
+    }
     expect(engine.getStats().completedQuestions).toBe(1);
 
     engine.destroy();
   });
 
-  it('rejects incorrect taps, increments penalty, and keeps question active', () => {
+  it('evaluates incorrect 3-bubble sequence, increments incorrectTaps, and tracks in wrong questions', () => {
     const engine = new MathBubbleEngine();
     engine.startSession(15, 999);
 
@@ -73,11 +76,18 @@ describe('Math Bubble Rush', () => {
 
     const { correctOrderIds } = state.question;
 
-    // Tapping the highest bubble first is incorrect (it should be lowest first)
+    // Tapping inverted order (highest to lowest instead of lowest to highest)
     engine.tapBubble(correctOrderIds[2]);
+    engine.tapBubble(correctOrderIds[1]);
+    engine.tapBubble(correctOrderIds[0]);
 
     expect(engine.getStats().incorrectTaps).toBe(1);
-    expect(engine.getState().status).toBe('selection_feedback');
+    const evalState = engine.getState();
+    expect(evalState.status).toBe('evaluation_feedback');
+    if (evalState.status === 'evaluation_feedback') {
+      expect(evalState.isCorrect).toBe(false);
+    }
+    expect(engine.getStats().wrongQuestions?.length).toBe(1);
 
     engine.destroy();
   });

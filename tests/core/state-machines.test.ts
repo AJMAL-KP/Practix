@@ -16,11 +16,11 @@ describe('State Machine Transitions and Invariant Protections', () => {
     engine.tapBubble(correctOrderIds[1]);
     engine.tapBubble(correctOrderIds[2]);
 
-    expect(engine.getState().status).toBe('question_complete');
+    expect(engine.getState().status).toBe('evaluation_feedback');
 
     // Attempting further taps while question is completing should have no effect
     engine.tapBubble(correctOrderIds[0]);
-    expect(engine.getState().status).toBe('question_complete');
+    expect(engine.getState().status).toBe('evaluation_feedback');
 
     engine.destroy();
   });

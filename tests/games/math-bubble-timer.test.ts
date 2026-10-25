@@ -45,7 +45,7 @@ describe('Math Bubble Rush — Timer & Monotonic Deadline Tests', () => {
     engine.tapBubble(correctOrderIds[1]);
     engine.tapBubble(correctOrderIds[2]);
 
-    expect(engine.getState().status).toBe('question_complete');
+    expect(engine.getState().status).toBe('evaluation_feedback');
     const timedOutBefore = engine.getStats().timedOutQuestions;
 
     // Advance 350ms (before next question transition at 400ms)

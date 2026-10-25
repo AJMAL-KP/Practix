@@ -5,19 +5,19 @@ import { getDifficultyConfig, MathQuestionGenerator } from './generator';
 import {
   MathBubbleState,
   MathQuestion,
+  MathQuestionReview,
   MathSessionStats,
 } from './types';
 
 /**
  * Pure scoring function:
  * - 100 points per correctly completed question
- * - Subtract 10 points per incorrect tap
- * - 0 points for timed-out question
+ * - Subtract 10 points per incorrect tap / question penalty
  * - Clamped at 0 (never negative)
  */
 export function calculateMathBubbleScore(
   completedQuestions: number,
-  incorrectTaps: number
+  incorrectTaps: number = 0
 ): number {
   const base = Math.max(0, completedQuestions) * 100;
   const penalty = Math.max(0, incorrectTaps) * 10;
@@ -45,6 +45,7 @@ export class MathBubbleEngine {
   private currentDeadline: number | null = null;
   private questionStartTime: number = 0;
   private sessionCommitted: boolean = false;
+  private wrongQuestions: MathQuestionReview[] = [];
 
   private lastTapBubbleId: string | null = null;
   private lastTapTimestamp: number = 0;
@@ -62,6 +63,7 @@ export class MathBubbleEngine {
     score: 0,
     accuracy: 100,
     highestDifficultyTier: 1,
+    wrongQuestions: [],
   };
 
   private listeners: Array<(state: MathBubbleState) => void> = [];
@@ -70,11 +72,7 @@ export class MathBubbleEngine {
   constructor() {
     this.timer = new MonotonicTimer({
       onTick: (remainingMs) => {
-        if (
-          this.state.status === 'playing' ||
-          this.state.status === 'selection_feedback' ||
-          this.state.status === 'correct_feedback'
-        ) {
+        if (this.state.status === 'playing') {
           this.state = {
             ...this.state,
             remainingMs,
@@ -105,7 +103,10 @@ export class MathBubbleEngine {
   }
 
   getStats(): MathSessionStats {
-    return { ...this.stats };
+    return {
+      ...this.stats,
+      wrongQuestions: [...this.wrongQuestions],
+    };
   }
 
   getQuestions(): MathQuestion[] {
@@ -116,12 +117,15 @@ export class MathBubbleEngine {
     this.clearTransition();
     this.timer.stop();
     this.sessionCommitted = false;
+    this.wrongQuestions = [];
 
     const settings = StorageService.getSettings();
     const durationSec = customDurationSec ?? settings.mathQuestionDurationSec ?? 15;
     this.questionDurationMs = Math.max(5, durationSec) * 1000;
 
-    const generator = new MathQuestionGenerator(generatorSeed);
+    // Use fresh randomized seed each session if none specified
+    const seed = generatorSeed ?? Math.floor(Math.random() * 1000000) + 1;
+    const generator = new MathQuestionGenerator(seed);
     this.questions = generator.generateSession();
     this.currentQuestionIndex = 0;
 
@@ -138,9 +142,14 @@ export class MathBubbleEngine {
       score: 0,
       accuracy: 100,
       highestDifficultyTier: 1,
+      wrongQuestions: [],
     };
 
     this.startQuestion(0);
+  }
+
+  replay(): void {
+    this.startSession();
   }
 
   private startQuestion(index: number): void {
@@ -177,14 +186,15 @@ export class MathBubbleEngine {
     this.notify();
   }
 
+  advanceNextQuestion(): void {
+    this.clearTransition();
+    this.startQuestion(this.currentQuestionIndex + 1);
+  }
+
   tapBubble(bubbleId: string): void {
-    // 1. Confirm game is in an active playable state
-    if (
-      this.state.status !== 'playing' &&
-      this.state.status !== 'selection_feedback' &&
-      this.state.status !== 'correct_feedback'
-    ) {
-      return; // Ignore taps during complete, timeout, or result screens
+    // 1. Confirm game is in an active playing state
+    if (this.state.status !== 'playing') {
+      return;
     }
 
     // 2. Authoritative deadline check: reject tap if deadline has expired
@@ -194,7 +204,7 @@ export class MathBubbleEngine {
       return;
     }
 
-    const { question, selectedIds, penaltyCount } = this.state;
+    const { question, selectedIds } = this.state;
 
     // 3. Confirm bubble belongs to current question
     const bubble = question.bubbles.find((b) => b.id === bubbleId);
@@ -207,116 +217,112 @@ export class MathBubbleEngine {
       return;
     }
 
-    // Prevent duplicate event delivery charging multiple penalties from single rapid click
+    // Prevent duplicate event delivery
     if (this.lastTapBubbleId === bubbleId && now - this.lastTapTimestamp < 60) {
       return;
     }
     this.lastTapBubbleId = bubbleId;
     this.lastTapTimestamp = now;
 
-    // 5. Compare with smallest value remaining unselected
+    this.stats.totalCountedTaps++;
+
+    // Check if this tap was the next expected ascending bubble
     const nextExpectedId = question.correctOrderIds[selectedIds.length];
-
     if (bubbleId === nextExpectedId) {
-      // Correct selection
-      const newSelected = [...selectedIds, bubbleId];
       this.stats.correctSelections++;
-      this.stats.totalCountedTaps++;
-      SoundController.playTapCorrect(newSelected.length);
+    }
 
-      if (newSelected.length === 3) {
-        // All 3 bubbles correctly selected -> Question resolved successfully
-        this.timer.stop();
-        this.currentDeadline = null;
-        const timeSpent = performance.now() - this.questionStartTime;
-        this.stats.completedQuestions++;
-        this.stats.totalTimeMs += timeSpent;
-        SoundController.playQuestionClear();
+    // Add bubble to selected list
+    const updatedSelectedIds = [...selectedIds, bubbleId];
 
-        this.state = {
-          status: 'question_complete',
-          questionIndex: this.currentQuestionIndex,
-          question,
-          selectedIds: newSelected,
-          timeSpentMs: timeSpent,
-        };
-        this.notify();
+    // Play selection sound
+    SoundController.playTap();
 
-        this.scheduleTransition(() => {
-          this.advanceNextQuestion();
-        }, 400);
-      } else {
-        // Step 1 or 2 correct -> Visual feedback, question remains interactive
-        this.state = {
-          status: 'playing',
-          questionIndex: this.currentQuestionIndex,
-          question,
-          selectedIds: newSelected,
-          remainingMs: this.timer.getRemainingMs(),
-          penaltyCount,
-          incorrectBubbleId: null,
-        };
-        this.notify();
-      }
-    } else {
-      // Incorrect tap
-      this.stats.incorrectTaps++;
-      this.stats.totalCountedTaps++;
-      this.stats.penaltyPoints++;
-      SoundController.playTapIncorrect();
-
-      const newPenaltyCount = penaltyCount + 1;
-
-      // Transition to selection_feedback (with incorrect type)
+    if (updatedSelectedIds.length < 3) {
+      // 1st or 2nd bubble selected
       this.state = {
-        status: 'selection_feedback',
-        questionIndex: this.currentQuestionIndex,
-        question,
-        selectedIds,
-        feedbackId: bubbleId,
-        feedbackType: 'incorrect',
-        remainingMs: this.timer.getRemainingMs(),
-        penaltyCount: newPenaltyCount,
+        ...this.state,
+        selectedIds: updatedSelectedIds,
       };
       this.notify();
-
-      // Automatically clear incorrect shake feedback after 350ms, returning to playing
-      this.scheduleTransition(() => {
-        if (this.state.status === 'selection_feedback') {
-          this.state = {
-            status: 'playing',
-            questionIndex: this.currentQuestionIndex,
-            question,
-            selectedIds,
-            remainingMs: this.timer.getRemainingMs(),
-            penaltyCount: newPenaltyCount,
-            incorrectBubbleId: null,
-          };
-          this.notify();
-        }
-      }, 350);
+      return;
     }
+
+    // 3rd bubble tapped! Authoritative evaluation of the 3-bubble order
+    this.timer.stop();
+
+    const isCorrect =
+      updatedSelectedIds[0] === question.correctOrderIds[0] &&
+      updatedSelectedIds[1] === question.correctOrderIds[1] &&
+      updatedSelectedIds[2] === question.correctOrderIds[2];
+
+    if (isCorrect) {
+      // Correct order! (Green light)
+      this.stats.completedQuestions++;
+      SoundController.playQuestionClear();
+
+      this.state = {
+        status: 'evaluation_feedback',
+        questionIndex: this.currentQuestionIndex,
+        question,
+        selectedIds: updatedSelectedIds,
+        isCorrect: true,
+        remainingMs: this.timer.getRemainingMs(),
+      };
+      this.notify();
+    } else {
+      // Incorrect order! (Red light)
+      this.stats.incorrectTaps++;
+      SoundController.playTapIncorrect();
+
+      // Record in wrong questions for final review
+      this.wrongQuestions.push({
+        questionIndex: this.currentQuestionIndex,
+        bubbles: [...question.bubbles],
+        userOrderIds: [...updatedSelectedIds],
+        correctOrderIds: [...question.correctOrderIds],
+        isCorrect: false,
+        isTimedOut: false,
+      });
+
+      this.state = {
+        status: 'evaluation_feedback',
+        questionIndex: this.currentQuestionIndex,
+        question,
+        selectedIds: updatedSelectedIds,
+        isCorrect: false,
+        remainingMs: this.timer.getRemainingMs(),
+      };
+      this.notify();
+    }
+
+    // After 480ms, advance to next question
+    this.scheduleTransition(() => {
+      this.startQuestion(this.currentQuestionIndex + 1);
+    }, 480);
   }
 
   handleTimeout(): void {
-    if (
-      this.state.status !== 'playing' &&
-      this.state.status !== 'selection_feedback' &&
-      this.state.status !== 'correct_feedback'
-    ) {
+    if (this.state.status !== 'playing') {
       return;
     }
 
     this.timer.stop();
-    this.currentDeadline = null;
     this.clearTransition();
-
     this.stats.timedOutQuestions++;
-    this.stats.totalTimeMs += this.questionDurationMs;
     SoundController.playTimeout();
 
-    const question = this.questions[this.currentQuestionIndex];
-    const selectedIds = this.state.selectedIds || [];
+    const { question, selectedIds } = this.state;
+
+    // Record timed-out question in review list
+    this.wrongQuestions.push({
+      questionIndex: this.currentQuestionIndex,
+      bubbles: [...question.bubbles],
+      userOrderIds: [...selectedIds],
+      correctOrderIds: [...question.correctOrderIds],
+      isCorrect: false,
+      isTimedOut: true,
+    });
 
     this.state = {
       status: 'question_timeout',
@@ -327,21 +333,12 @@ export class MathBubbleEngine {
     this.notify();
 
     this.scheduleTransition(() => {
-      this.advanceNextQuestion();
-    }, 550);
-  }
-
-  private advanceNextQuestion(): void {
-    if (this.currentQuestionIndex + 1 < 25) {
       this.startQuestion(this.currentQuestionIndex + 1);
-    } else {
-      this.finishSession();
-    }
+    }, 480);
   }
 
-  private finishSession(): void {
+  finishSession(): void {
     this.timer.stop();
-    this.currentDeadline = null;
     this.clearTransition();
 
     if (this.sessionCommitted) {
@@ -349,17 +346,15 @@ export class MathBubbleEngine {
     }
     this.sessionCommitted = true;
 
+    this.stats.totalTimeMs = Math.round(performance.now() - (this.questionStartTime || 0));
+    this.stats.score = calculateMathBubbleScore(this.stats.completedQuestions, this.stats.incorrectTaps);
     this.stats.accuracy = calculateMathBubbleAccuracy(
       this.stats.correctSelections,
       this.stats.incorrectTaps
     );
+    this.stats.wrongQuestions = [...this.wrongQuestions];
 
-    this.stats.score = calculateMathBubbleScore(
-      this.stats.completedQuestions,
-      this.stats.incorrectTaps
-    );
-
-    // Save history record and update high score
+    // Commit to persistent history
     StorageService.addHistoryRecord({
       gameId: 'math-bubble',
       score: this.stats.score,
@@ -368,8 +363,7 @@ export class MathBubbleEngine {
       details: {
         completedQuestions: `${this.stats.completedQuestions}/25`,
         accuracy: `${this.stats.accuracy}%`,
-        penalties: this.stats.incorrectTaps,
-        timeouts: this.stats.timedOutQuestions,
+        wrongCount: this.wrongQuestions.length,
       },
     });
 
@@ -395,14 +389,9 @@ export class MathBubbleEngine {
     }
   }
 
-  replay(): void {
-    this.startSession(this.questionDurationMs / 1000);
-  }
-
   destroy(): void {
     this.timer.stop();
     this.clearTransition();
-    this.currentDeadline = null;
     this.listeners = [];
   }
 }

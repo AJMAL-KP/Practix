@@ -85,11 +85,12 @@ describe('Math Bubble Rush — Session & Scoring Tests', () => {
   it('replay completely resets session counters and generates fresh challenge', () => {
     const engine = new MathBubbleEngine();
     engine.startSession(15, 1111);
-
     const state = engine.getState();
     if (state.status === 'playing') {
-      // Tap incorrect once
+      // Tap incorrect 3-bubble sequence
       engine.tapBubble(state.question.correctOrderIds[2]);
+      engine.tapBubble(state.question.correctOrderIds[1]);
+      engine.tapBubble(state.question.correctOrderIds[0]);
     }
     expect(engine.getStats().incorrectTaps).toBe(1);
 

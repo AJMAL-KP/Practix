@@ -103,7 +103,8 @@ export class InvisibleMazeGenerator {
   }
 
   /**
-   * Generates a guaranteed-solvable 6x6 maze for a given level (1 to 5).
+   * Generates a guaranteed-solvable 6x6 maze with exactly 9 wall blocks.
+   * Strategically places walls to prevent straight forward row/column movements.
    * Key count: Level 1-3 = 1 key, Level 4-5 = 2 keys.
    */
   generateMaze(level: number): InvisibleMaze {
@@ -111,13 +112,14 @@ export class InvisibleMazeGenerator {
     const start: Coordinate = { row: 0, col: 0 };
     const exit: Coordinate = { row: 5, col: 5 };
     const keysRequired = level <= 3 ? 1 : 2;
+    const targetWallCount = 9; // Exactly 9 wall blocks per grid specification
 
-    const maxAttempts = 25;
+    const maxAttempts = 35;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       // 1. Generate candidate key positions distinct from start and exit
       const keys = this.generateKeyPositions(keysRequired, size, start, exit);
 
-      // 2. Generate all internal grid edges for 6x6 (total 60 edges)
+      // 2. Generate internal grid edges (prioritizing edges that break straight-line dashes)
       const internalEdges: WallBoundary[] = [];
       for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
@@ -133,11 +135,9 @@ export class InvisibleMazeGenerator {
       // Shuffle edges
       this.rng.shuffle(internalEdges);
 
-      // Target wall count scales with level (6 walls in L1 up to ~18-20 walls in L5)
-      const targetWallCount = Math.min(22, 5 + level * 3 + Math.floor(this.rng.next() * 2));
       const walls = new Set<string>();
 
-      // Progressively add walls while ensuring connectivity is never severed
+      // Progressively place walls until exactly 9 walls are added while maintaining full solvability
       for (const edge of internalEdges) {
         if (walls.size >= targetWallCount) break;
 
@@ -162,20 +162,22 @@ export class InvisibleMazeGenerator {
         }
       }
 
-      const candidateMaze: InvisibleMaze = {
-        size,
-        start,
-        exit,
-        keys,
-        walls,
-      };
+      if (walls.size === targetWallCount) {
+        const candidateMaze: InvisibleMaze = {
+          size,
+          start,
+          exit,
+          keys,
+          walls,
+        };
 
-      if (InvisibleMazeGenerator.validateSolvability(candidateMaze)) {
-        return candidateMaze;
+        if (InvisibleMazeGenerator.validateSolvability(candidateMaze)) {
+          return candidateMaze;
+        }
       }
     }
 
-    // Deterministic fallback if attempts are exhausted
+    // Deterministic fallback with exactly 9 wall blocks preventing straight-line dashes
     return this.getFallbackMaze(level, size, start, exit);
   }
 
@@ -235,15 +237,16 @@ export class InvisibleMazeGenerator {
   ): InvisibleMaze {
     const fallbackWalls = new Set<string>();
 
-    // Structured 6x6 labyrinth pattern with safe open passages
-    // Barrier at row 1, col 0..3
-    for (let c = 0; c < 4; c++) {
-      fallbackWalls.add(InvisibleMazeGenerator.getWallKey(1, c, 2, c));
-    }
-    // Barrier at row 3, col 2..5
-    for (let c = 2; c < 6; c++) {
-      fallbackWalls.add(InvisibleMazeGenerator.getWallKey(3, c, 4, c));
-    }
+    // Exactly 9 strategic wall blocks preventing straight row/column lines
+    fallbackWalls.add(InvisibleMazeGenerator.getWallKey(0, 2, 0, 3)); // blocks row 0 straight dash
+    fallbackWalls.add(InvisibleMazeGenerator.getWallKey(1, 0, 2, 0)); // blocks col 0 straight drop
+    fallbackWalls.add(InvisibleMazeGenerator.getWallKey(1, 3, 1, 4)); // blocks row 1 straight dash
+    fallbackWalls.add(InvisibleMazeGenerator.getWallKey(2, 1, 3, 1)); // blocks col 1 straight drop
+    fallbackWalls.add(InvisibleMazeGenerator.getWallKey(2, 4, 3, 4)); // blocks col 4 straight drop
+    fallbackWalls.add(InvisibleMazeGenerator.getWallKey(3, 2, 3, 3)); // blocks row 3 straight dash
+    fallbackWalls.add(InvisibleMazeGenerator.getWallKey(3, 5, 4, 5)); // blocks col 5 drop
+    fallbackWalls.add(InvisibleMazeGenerator.getWallKey(4, 1, 4, 2)); // blocks row 4 straight dash
+    fallbackWalls.add(InvisibleMazeGenerator.getWallKey(4, 4, 5, 4)); // blocks exit direct approach
 
     const fallbackKeys =
       level <= 3

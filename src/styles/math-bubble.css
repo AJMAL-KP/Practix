@@ -329,3 +329,168 @@
   0% { transform: scale(1); filter: drop-shadow(0 0 4px var(--accent-rose-glow)); }
   100% { transform: scale(1.05); filter: drop-shadow(0 0 12px var(--accent-rose-glow)); }
 }
+
+/* Evaluation Green/Red Light Banner */
+.math-eval-status {
+  font-size: 0.9rem;
+  font-weight: 800;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  display: none;
+  animation: badgePop 0.2s ease-out;
+}
+
+.math-eval-status.green-light {
+  display: block;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  color: #34d399;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
+}
+
+.math-eval-status.red-light {
+  display: block;
+  background: rgba(244, 63, 94, 0.2);
+  border: 1px solid rgba(244, 63, 94, 0.5);
+  color: #fb7185;
+  box-shadow: 0 0 14px rgba(244, 63, 94, 0.4);
+}
+
+/* Green and Red Light on Bubbles */
+.math-bubble.eval-correct {
+  background: radial-gradient(circle at 35% 30%, rgba(16, 185, 129, 0.6), rgba(6, 78, 59, 0.98)) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 36px rgba(16, 185, 129, 0.7), inset 0 3px 10px rgba(255, 255, 255, 0.4) !important;
+}
+
+.math-bubble.eval-incorrect {
+  background: radial-gradient(circle at 35% 30%, rgba(244, 63, 94, 0.6), rgba(136, 19, 55, 0.98)) !important;
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 36px rgba(244, 63, 94, 0.7), inset 0 3px 10px rgba(255, 255, 255, 0.4) !important;
+  animation: bubbleShake 0.35s ease-in-out;
+}
+
+.bubble-sequence-badge.green {
+  background: #10b981 !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.8) !important;
+}
+
+.bubble-sequence-badge.red {
+  background: #f43f5e !important;
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.8) !important;
+}
+
+/* Review Wrong Questions Panel */
+.wrong-questions-review-container {
+  margin-top: 1.25rem;
+  width: 100%;
+  max-width: 480px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 1.25rem;
+  box-shadow: var(--shadow-md);
+  text-align: left;
+}
+
+.perfect-score-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 1rem;
+  border-radius: 12px;
+  color: #34d399;
+}
+
+.wrong-cards-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.wrong-card {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+}
+
+.wrong-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.q-badge {
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: #fff;
+}
+
+.status-badge.wrong {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fda4af;
+  background: rgba(244, 63, 94, 0.2);
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.status-badge.timeout {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.2);
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.order-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+}
+
+.order-label {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.order-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.tag-wrong {
+  background: rgba(244, 63, 94, 0.18);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  color: #fecdd3;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.tag-correct {
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #a7f3d0;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.tag-timedout {
+  color: #94a3b8;
+  font-style: italic;
+}
