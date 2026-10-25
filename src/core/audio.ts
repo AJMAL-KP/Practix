@@ -45,6 +45,30 @@ export class SoundController {
   }
 
   /**
+   * Subtle soft click for cell movement or navigation tap
+   */
+  static playTap(): void {
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.04);
+
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.05);
+  }
+
+  /**
    * Ascending chime for correct bubble selection (step 1, 2, or 3)
    */
   static playTapCorrect(step: number): void {

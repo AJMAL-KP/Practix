@@ -45,7 +45,7 @@ export class InvisibleWallsView {
           <div><strong style="color: #fff;">1.</strong> Navigate through a 10×10 grid from start (top-left) to exit (bottom-right).</div>
           <div><strong style="color: #fff;">2.</strong> Hidden walls are <strong style="color: var(--accent-rose);">completely invisible</strong> during normal play.</div>
           <div><strong style="color: #fff;">3.</strong> Hitting a hidden wall <strong style="color: #fff;">resets you to start</strong> and drops collected keys. The maze and timer remain intact!</div>
-          <div><strong style="color: #fff;">4.</strong> Collect all required keys (<strong style="color: #fbbf24;">🔑</strong>) to unlock the exit door.</div>
+          <div><strong style="color: #fff;">4.</strong> Collect all required keys (<strong style="color: #fbbf24;">🔑</strong>) to unlock the exit door. Levels 1–3 require 1 key; Levels 4–5 require 2 keys.</div>
           <div><strong style="color: #fff;">5.</strong> Move using the D-Pad, Arrow keys / WASD, or swipe gestures. 5 levels (${durationMins}m each).</div>
         </div>
 
@@ -110,29 +110,37 @@ export class InvisibleWallsView {
   }
 
   private setupSwipeGestures(boardEl: HTMLElement): void {
-    boardEl.addEventListener('touchstart', (e) => {
-      if (e.touches.length > 0) {
-        this.touchStartX = e.touches[0].clientX;
-        this.touchStartY = e.touches[0].clientY;
-      }
-    }, { passive: true });
+    boardEl.addEventListener(
+      'touchstart',
+      (e) => {
+        if (e.touches.length > 0) {
+          this.touchStartX = e.touches[0].clientX;
+          this.touchStartY = e.touches[0].clientY;
+        }
+      },
+      { passive: true }
+    );
 
-    boardEl.addEventListener('touchend', (e) => {
-      if (e.changedTouches.length > 0) {
-        const deltaX = e.changedTouches[0].clientX - this.touchStartX;
-        const deltaY = e.changedTouches[0].clientY - this.touchStartY;
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
+    boardEl.addEventListener(
+      'touchend',
+      (e) => {
+        if (e.changedTouches.length > 0) {
+          const deltaX = e.changedTouches[0].clientX - this.touchStartX;
+          const deltaY = e.changedTouches[0].clientY - this.touchStartY;
+          const absX = Math.abs(deltaX);
+          const absY = Math.abs(deltaY);
 
-        if (Math.max(absX, absY) > 25) {
-          if (absX > absY) {
-            this.engine.move(deltaX > 0 ? 'right' : 'left');
-          } else {
-            this.engine.move(deltaY > 0 ? 'down' : 'up');
+          if (Math.max(absX, absY) > 25) {
+            if (absX > absY) {
+              this.engine.move(deltaX > 0 ? 'right' : 'left');
+            } else {
+              this.engine.move(deltaY > 0 ? 'down' : 'up');
+            }
           }
         }
-      }
-    }, { passive: true });
+      },
+      { passive: true }
+    );
   }
 
   private render(state: InvisibleWallsState): void {
@@ -154,14 +162,14 @@ export class InvisibleWallsView {
         <div class="walls-header-bar">
           <div class="walls-level-badge">Level <span class="lvl-num">1</span> / 5</div>
           <div class="walls-keys-badge">🔑 <span class="keys-num">0</span> / <span class="keys-req">1</span></div>
-          <div class="walls-timer-slot" style="flex: 1; margin-left: 1rem;"></div>
+          <div class="walls-timer-slot" style="flex: 1; margin-left: 0.5rem;"></div>
         </div>
 
         <div class="walls-board-wrapper">
           <div class="walls-grid"></div>
         </div>
 
-        <div class="walls-feedback-slot" style="min-height: 24px; text-align: center; font-size: 0.85rem; font-weight: 700; color: #fda4af;"></div>
+        <div class="walls-feedback-slot"></div>
 
         <div class="walls-dpad-slot"></div>
       `;
@@ -179,7 +187,7 @@ export class InvisibleWallsView {
 
     // Update level and keys badges
     const lvlNumEl = this.element.querySelector('.lvl-num');
-    if (lvlNumEl) lvlNumEl.textContent = String(level);
+    if (lvlNumEl) lvlNumEl.textContent = String(level || 1);
 
     const keysNumEl = this.element.querySelector('.keys-num');
     if (keysNumEl) keysNumEl.textContent = String(collectedKeyIndices?.length || 0);
@@ -189,13 +197,29 @@ export class InvisibleWallsView {
 
     this.timerBar.update(remainingMs || 0, ratio);
 
+    // Board shake on wall collision
+    const boardWrapper = this.element.querySelector('.walls-board-wrapper');
+    if (boardWrapper) {
+      if (state.status === 'wall_collision') {
+        boardWrapper.classList.add('board-shake');
+      } else {
+        boardWrapper.classList.remove('board-shake');
+      }
+    }
+
     // Update Feedback slot
     const feedbackSlot = this.element.querySelector('.walls-feedback-slot');
     if (feedbackSlot) {
       if (state.status === 'locked_exit_feedback') {
         feedbackSlot.textContent = '🔒 Exit Locked! Collect all keys first.';
       } else if (state.status === 'wall_collision') {
-        feedbackSlot.textContent = '💥 Hidden wall collision! Reset to start.';
+        feedbackSlot.textContent = '💥 Hidden wall collision! Resetting to start...';
+      } else if (state.status === 'resetting') {
+        feedbackSlot.textContent = '🔄 Returning to start position...';
+      } else if (state.status === 'level_complete') {
+        feedbackSlot.textContent = '🎉 Level Complete!';
+      } else if (state.status === 'level_transition') {
+        feedbackSlot.textContent = `🚀 Preparing Level ${state.nextLevel}...`;
       } else {
         feedbackSlot.textContent = '';
       }
@@ -211,50 +235,34 @@ export class InvisibleWallsView {
           const cell = document.createElement('div');
           const isStart = r === maze.start.row && c === maze.start.col;
           const isExit = r === maze.exit.row && c === maze.exit.col;
-          const isPlayer = r === playerPos.row && c === playerPos.col;
+          const isPlayer = r === playerPos?.row && c === playerPos?.col;
 
           const keyIdx = maze.keys.findIndex((k: any) => k.row === r && k.col === c);
           const hasKey = keyIdx !== -1 && !collectedKeyIndices?.includes(keyIdx);
+          const keysMissing = (collectedKeyIndices?.length || 0) < (keysRequired || 1);
 
-          cell.className = `maze-cell ${isStart ? 'is-start' : ''} ${isExit ? 'is-exit' : ''} ${isExit && (collectedKeyIndices?.length || 0) < keysRequired ? 'locked' : ''}`;
+          cell.className = `maze-cell ${isStart ? 'is-start' : ''} ${isExit ? 'is-exit' : ''} ${
+            isExit && keysMissing ? 'locked' : ''
+          } ${isExit && state.status === 'locked_exit_feedback' ? 'pulse-locked' : ''}`;
 
           if (isPlayer) {
-            cell.innerHTML = `<div class="player-avatar">●</div>`;
+            const isCollided = state.status === 'wall_collision';
+            const isResetting = state.status === 'resetting';
+            cell.innerHTML = `<div class="player-avatar ${isCollided ? 'collided' : ''} ${
+              isResetting ? 'resetting' : ''
+            }">●</div>`;
           } else if (hasKey) {
             cell.innerHTML = `<span style="font-size: 1.1rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));">🔑</span>`;
           } else if (isExit) {
-            cell.innerHTML = `<span style="font-size: 1.1rem;">${(collectedKeyIndices?.length || 0) >= keysRequired ? '🚪' : '🔒'}</span>`;
+            cell.innerHTML = `<span style="font-size: 1.1rem;">${
+              keysMissing ? '🔒' : '🚪'
+            }</span>`;
           } else if (isStart) {
-            cell.innerHTML = `<span style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 700;">START</span>`;
+            cell.innerHTML = `<span style="font-size: 0.7rem; color: var(--accent-cyan); font-weight: 700;">START</span>`;
           }
 
           gridEl.appendChild(cell);
         }
-      }
-
-      // If in collision state, render shockwave line at the collision boundary
-      if (state.status === 'wall_collision' && state.hitWall) {
-        const { r1, c1, r2, c2 } = state.hitWall;
-        const shockwave = document.createElement('div');
-        const isHorizontal = r1 !== r2; // wall between row and row+1
-
-        if (isHorizontal) {
-          const topPercent = (Math.max(r1, r2) / 10) * 100;
-          const leftPercent = (c1 / 10) * 100;
-          shockwave.className = 'wall-shockwave horizontal';
-          shockwave.style.top = `${topPercent}%`;
-          shockwave.style.left = `${leftPercent}%`;
-          shockwave.style.width = '10%';
-        } else {
-          const topPercent = (r1 / 10) * 100;
-          const leftPercent = (Math.max(c1, c2) / 10) * 100;
-          shockwave.className = 'wall-shockwave vertical';
-          shockwave.style.top = `${topPercent}%`;
-          shockwave.style.left = `${leftPercent}%`;
-          shockwave.style.height = '10%';
-        }
-
-        gridEl.appendChild(shockwave);
       }
     }
   }
@@ -269,9 +277,11 @@ export class InvisibleWallsView {
         { label: 'Keys Collected', value: stats.keysCollected },
         { label: 'Hidden Wall Collisions', value: stats.wallCollisions },
         { label: 'Resets to Start', value: stats.resets },
+        { label: 'Successful Moves', value: stats.successfulMoves ?? 0 },
         { label: 'Total Time', value: `${Math.round(stats.totalTimeMs / 1000)}s` },
       ],
       onReplay: () => {
+        this.element.innerHTML = '';
         this.engine.startSession();
       },
       onHome: () => {

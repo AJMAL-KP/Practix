@@ -23,12 +23,20 @@ export interface InvisibleMaze {
 }
 
 export interface InvisibleWallsStats {
+  levelsAttempted: number;
   levelsCompleted: number; // 0 to 5
+  currentLevel: number;
+  requiredKeys: number;
   keysCollected: number;
+  successfulMoves: number;
+  totalMovesAttempted: number;
   wallCollisions: number;
   resets: number;
+  timeSpentPerLevelMs: number[];
   totalTimeMs: number;
   score: number;
+  highestDifficultyReached: number;
+  sessionCompleted: boolean;
 }
 
 export type InvisibleWallsState =
@@ -44,13 +52,25 @@ export type InvisibleWallsState =
       remainingMs: number;
       collisions: number;
       resets: number;
+      successfulMoves: number;
+      totalMovesAttempted: number;
     }
   | {
       status: 'wall_collision';
       level: number;
       maze: InvisibleMaze;
       playerPos: Coordinate;
-      hitWall: WallBoundary;
+      remainingMs: number;
+      collisions: number;
+      resets: number;
+      successfulMoves: number;
+      totalMovesAttempted: number;
+    }
+  | {
+      status: 'resetting';
+      level: number;
+      maze: InvisibleMaze;
+      playerPos: Coordinate;
       remainingMs: number;
       collisions: number;
       resets: number;
@@ -61,6 +81,8 @@ export type InvisibleWallsState =
       maze: InvisibleMaze;
       playerPos: Coordinate;
       remainingMs: number;
+      keysRequired: number;
+      collectedKeyIndices: number[];
     }
   | {
       status: 'level_complete';
