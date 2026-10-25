@@ -57,8 +57,8 @@ describe('Invisible Walls — Timer and Lifecycle Rules', () => {
 
     // Collect key and step onto exit
     (engine as any).collectedKeyIndices = [0];
-    (engine as any).playerPos = { row: 9, col: 8 };
-    state.maze.walls.delete(InvisibleMazeGenerator.getWallKey(9, 8, 9, 9));
+    (engine as any).playerPos = { row: 5, col: 4 };
+    state.maze.walls.delete(InvisibleMazeGenerator.getWallKey(5, 4, 5, 5));
 
     engine.move('right');
     expect(engine.getState().status).toBe('level_complete');

@@ -179,8 +179,8 @@ describe('Invisible Walls — 15 State Invariants (Section 11)', () => {
     const state = engine.getState();
     if (state.status !== 'playing') return;
 
-    (engine as any).playerPos = { row: 9, col: 8 };
-    state.maze.walls.delete(InvisibleMazeGenerator.getWallKey(9, 8, 9, 9));
+    (engine as any).playerPos = { row: 5, col: 4 };
+    state.maze.walls.delete(InvisibleMazeGenerator.getWallKey(5, 4, 5, 5));
 
     // Try moving to exit without collecting keys
     engine.move('right');
@@ -199,8 +199,8 @@ describe('Invisible Walls — 15 State Invariants (Section 11)', () => {
     if (state.status !== 'playing') return;
 
     (engine as any).collectedKeyIndices = [0];
-    (engine as any).playerPos = { row: 9, col: 8 };
-    state.maze.walls.delete(InvisibleMazeGenerator.getWallKey(9, 8, 9, 9));
+    (engine as any).playerPos = { row: 5, col: 4 };
+    state.maze.walls.delete(InvisibleMazeGenerator.getWallKey(5, 4, 5, 5));
 
     engine.move('right');
     expect(engine.getStats().levelsCompleted).toBe(1);

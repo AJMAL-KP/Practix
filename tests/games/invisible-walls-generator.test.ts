@@ -49,7 +49,7 @@ describe('Invisible Walls — Generator & Solvability Validation', () => {
     const mazeL5 = generator.generateMaze(5);
 
     // Wall count should generally be higher in level 5 than in level 1
-    expect(mazeL1.walls.size).toBeGreaterThanOrEqual(15);
+    expect(mazeL1.walls.size).toBeGreaterThanOrEqual(5);
     expect(mazeL5.walls.size).toBeGreaterThan(mazeL1.walls.size);
   });
 

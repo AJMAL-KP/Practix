@@ -52,8 +52,8 @@ describe('Invisible Walls', () => {
     if (state.status !== 'playing') return;
 
     // Teleport player directly to exit without collecting keys
-    (engine as any).playerPos = { row: 9, col: 8 };
-    engine.move('right'); // lands on exit (9, 9)
+    (engine as any).playerPos = { row: 5, col: 4 };
+    engine.move('right'); // lands on exit (5, 5)
 
     expect(engine.getState().status).toBe('locked_exit_feedback');
     expect(engine.getStats().levelsCompleted).toBe(0);

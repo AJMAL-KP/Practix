@@ -3,22 +3,22 @@ import { InvisibleMazeGenerator } from '../../src/games/invisible-walls/generato
 import { InvisibleWallsEngine } from '../../src/games/invisible-walls/engine';
 
 describe('Invisible Walls — Maze Model Specifications', () => {
-  it('validates 10x10 board dimensions and cell coordinate bounds', () => {
+  it('validates 6x6 board dimensions and cell coordinate bounds', () => {
     const generator = new InvisibleMazeGenerator(101);
     for (let lvl = 1; lvl <= 5; lvl++) {
       const maze = generator.generateMaze(lvl);
-      expect(maze.size).toBe(10);
+      expect(maze.size).toBe(6);
       expect(maze.start.row).toBe(0);
       expect(maze.start.col).toBe(0);
-      expect(maze.exit.row).toBe(9);
-      expect(maze.exit.col).toBe(9);
+      expect(maze.exit.row).toBe(5);
+      expect(maze.exit.col).toBe(5);
 
-      // Verify all keys are strictly within (0..9, 0..9)
+      // Verify all keys are strictly within (0..5, 0..5)
       for (const key of maze.keys) {
         expect(key.row).toBeGreaterThanOrEqual(0);
-        expect(key.row).toBeLessThan(10);
+        expect(key.row).toBeLessThan(6);
         expect(key.col).toBeGreaterThanOrEqual(0);
-        expect(key.col).toBeLessThan(10);
+        expect(key.col).toBeLessThan(6);
 
         // Keys must never overlap with start or exit
         expect(key.row === maze.start.row && key.col === maze.start.col).toBe(false);

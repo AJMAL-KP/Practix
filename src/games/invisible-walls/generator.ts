@@ -27,7 +27,7 @@ export class InvisibleMazeGenerator {
     start: Coordinate,
     target: Coordinate,
     walls: Set<string>,
-    size: number = 10
+    size: number = 6
   ): boolean {
     if (start.row === target.row && start.col === target.col) {
       return true;
@@ -103,21 +103,21 @@ export class InvisibleMazeGenerator {
   }
 
   /**
-   * Generates a guaranteed-solvable 10x10 maze for a given level (1 to 5).
+   * Generates a guaranteed-solvable 6x6 maze for a given level (1 to 5).
    * Key count: Level 1-3 = 1 key, Level 4-5 = 2 keys.
    */
   generateMaze(level: number): InvisibleMaze {
-    const size = 10;
+    const size = 6;
     const start: Coordinate = { row: 0, col: 0 };
-    const exit: Coordinate = { row: 9, col: 9 };
+    const exit: Coordinate = { row: 5, col: 5 };
     const keysRequired = level <= 3 ? 1 : 2;
 
-    const maxAttempts = 20;
+    const maxAttempts = 25;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       // 1. Generate candidate key positions distinct from start and exit
       const keys = this.generateKeyPositions(keysRequired, size, start, exit);
 
-      // 2. Generate all internal grid edges
+      // 2. Generate all internal grid edges for 6x6 (total 60 edges)
       const internalEdges: WallBoundary[] = [];
       for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
@@ -133,8 +133,8 @@ export class InvisibleMazeGenerator {
       // Shuffle edges
       this.rng.shuffle(internalEdges);
 
-      // Target wall count scales with level (18 walls in L1 up to 52 walls in L5)
-      const targetWallCount = Math.min(65, 16 + level * 8 + Math.floor(this.rng.next() * 5));
+      // Target wall count scales with level (6 walls in L1 up to ~18-20 walls in L5)
+      const targetWallCount = Math.min(22, 5 + level * 3 + Math.floor(this.rng.next() * 2));
       const walls = new Set<string>();
 
       // Progressively add walls while ensuring connectivity is never severed
@@ -190,13 +190,13 @@ export class InvisibleMazeGenerator {
     used.add(`${start.row},${start.col}`);
     used.add(`${exit.row},${exit.col}`);
 
-    // Candidate regions to spread keys
+    // Candidate regions to spread keys in 6x6
     const regions = [
-      { minR: 1, maxR: 4, minC: 5, maxC: 8 },
-      { minR: 5, maxR: 8, minC: 1, maxC: 4 },
-      { minR: 3, maxR: 6, minC: 3, maxC: 6 },
-      { minR: 6, maxR: 8, minC: 5, maxC: 8 },
-      { minR: 1, maxR: 3, minC: 1, maxC: 4 },
+      { minR: 1, maxR: 2, minC: 3, maxC: 4 },
+      { minR: 3, maxR: 4, minC: 1, maxC: 2 },
+      { minR: 2, maxR: 3, minC: 2, maxC: 3 },
+      { minR: 1, maxR: 2, minC: 1, maxC: 2 },
+      { minR: 3, maxR: 4, minC: 3, maxC: 4 },
     ];
     this.rng.shuffle(regions);
 
@@ -235,23 +235,22 @@ export class InvisibleMazeGenerator {
   ): InvisibleMaze {
     const fallbackWalls = new Set<string>();
 
-    // Structured labyrinth pattern with safe open passages
-    for (let c = 0; c < 8; c++) {
-      fallbackWalls.add(InvisibleMazeGenerator.getWallKey(2, c, 3, c));
+    // Structured 6x6 labyrinth pattern with safe open passages
+    // Barrier at row 1, col 0..3
+    for (let c = 0; c < 4; c++) {
+      fallbackWalls.add(InvisibleMazeGenerator.getWallKey(1, c, 2, c));
     }
-    for (let c = 2; c < 10; c++) {
-      fallbackWalls.add(InvisibleMazeGenerator.getWallKey(5, c, 6, c));
-    }
-    for (let c = 0; c < 8; c++) {
-      fallbackWalls.add(InvisibleMazeGenerator.getWallKey(8, c, 9, c));
+    // Barrier at row 3, col 2..5
+    for (let c = 2; c < 6; c++) {
+      fallbackWalls.add(InvisibleMazeGenerator.getWallKey(3, c, 4, c));
     }
 
     const fallbackKeys =
       level <= 3
-        ? [{ row: 4, col: 5 }]
+        ? [{ row: 2, col: 3 }]
         : [
-            { row: 2, col: 8 },
-            { row: 7, col: 2 },
+            { row: 1, col: 4 },
+            { row: 4, col: 1 },
           ];
 
     return {

@@ -215,7 +215,8 @@ export class InvisibleWallsEngine {
       const targetCol = this.playerPos.col + dc;
 
       // 4. Reject movement outside the board (does NOT count as wall collision)
-      if (targetRow < 0 || targetRow >= 10 || targetCol < 0 || targetCol >= 10) {
+      const size = this.maze.size;
+      if (targetRow < 0 || targetRow >= size || targetCol < 0 || targetCol >= size) {
         return;
       }
 

@@ -42,7 +42,7 @@ export class InvisibleWallsView {
         </div>
 
         <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1rem; font-size: 0.9rem; line-height: 1.5; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.5rem;">
-          <div><strong style="color: #fff;">1.</strong> Navigate through a 10×10 grid from start (top-left) to exit (bottom-right).</div>
+          <div><strong style="color: #fff;">1.</strong> Navigate through a 6×6 grid from start (top-left) to exit (bottom-right).</div>
           <div><strong style="color: #fff;">2.</strong> Hidden walls are <strong style="color: var(--accent-rose);">completely invisible</strong> during normal play.</div>
           <div><strong style="color: #fff;">3.</strong> Hitting a hidden wall <strong style="color: #fff;">resets you to start</strong> and drops collected keys. The maze and timer remain intact!</div>
           <div><strong style="color: #fff;">4.</strong> Collect all required keys (<strong style="color: #fbbf24;">🔑</strong>) to unlock the exit door. Levels 1–3 require 1 key; Levels 4–5 require 2 keys.</div>
@@ -225,13 +225,14 @@ export class InvisibleWallsView {
       }
     }
 
-    // Render 10x10 Grid
+    // Render Grid (6x6)
     const gridEl = this.element.querySelector('.walls-grid');
     if (gridEl && maze) {
       gridEl.innerHTML = '';
+      const size = maze.size || 6;
 
-      for (let r = 0; r < 10; r++) {
-        for (let c = 0; c < 10; c++) {
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
           const cell = document.createElement('div');
           const isStart = r === maze.start.row && c === maze.start.col;
           const isExit = r === maze.exit.row && c === maze.exit.col;

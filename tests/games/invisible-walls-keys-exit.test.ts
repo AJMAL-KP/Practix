@@ -86,10 +86,10 @@ describe('Invisible Walls — Key Collection and Exit Rules', () => {
     const state = engine.getState();
     if (state.status !== 'playing') return;
 
-    // Position player right next to exit (9, 8) with exit at (9, 9)
+    // Position player right next to exit (5, 4) with exit at (5, 5)
     // No keys collected yet
-    (engine as any).playerPos = { row: 9, col: 8 };
-    state.maze.walls.delete(InvisibleMazeGenerator.getWallKey(9, 8, 9, 9));
+    (engine as any).playerPos = { row: 5, col: 4 };
+    state.maze.walls.delete(InvisibleMazeGenerator.getWallKey(5, 4, 5, 5));
 
     // Move into exit
     engine.move('right');
@@ -111,9 +111,9 @@ describe('Invisible Walls — Key Collection and Exit Rules', () => {
     // Collect the key
     (engine as any).collectedKeyIndices = [0];
 
-    // Position player at (9, 8) and clear passage to exit (9, 9)
-    (engine as any).playerPos = { row: 9, col: 8 };
-    state.maze.walls.delete(InvisibleMazeGenerator.getWallKey(9, 8, 9, 9));
+    // Position player at (5, 4) and clear passage to exit (5, 5)
+    (engine as any).playerPos = { row: 5, col: 4 };
+    state.maze.walls.delete(InvisibleMazeGenerator.getWallKey(5, 4, 5, 5));
 
     // Step into exit
     engine.move('right');

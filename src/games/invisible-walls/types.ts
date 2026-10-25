@@ -1,6 +1,6 @@
 export interface Coordinate {
-  row: number; // 0 to 9
-  col: number; // 0 to 9
+  row: number; // 0 to 5
+  col: number; // 0 to 5
 }
 
 export type MoveDirection = 'up' | 'down' | 'left' | 'right';
@@ -14,7 +14,7 @@ export interface WallBoundary {
 }
 
 export interface InvisibleMaze {
-  size: number; // 10
+  size: number; // 6
   start: Coordinate;
   exit: Coordinate;
   keys: Coordinate[];
