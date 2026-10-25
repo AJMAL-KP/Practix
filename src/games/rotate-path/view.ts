@@ -25,7 +25,7 @@ export class RotatePathView {
 
   private showIntroModal(): void {
     const settings = StorageService.getSettings();
-    const durationMins = Math.round(settings.rotateLevelDurationSec / 60);
+    const durationMins = Math.round((settings.rotateLevelDurationSec ?? 240) / 60);
 
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
@@ -34,14 +34,14 @@ export class RotatePathView {
         <div style="text-align: center;">
           <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🧀</div>
           <h2 style="font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em;">Rotate the Path</h2>
-          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">Accenture Assessment Grid Challenge</p>
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">Accenture Timed Assessment Challenge</p>
         </div>
 
         <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 1rem; font-size: 0.9rem; line-height: 1.5; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.5rem;">
           <div><strong style="color: #fff;">1.</strong> Guide the mouse from the left entrance to the cheese on the right.</div>
           <div><strong style="color: #fff;">2.</strong> Tap any <strong style="color: #eab308;">3×3 region</strong> to select it.</div>
           <div><strong style="color: #fff;">3.</strong> Use <strong style="color: #fff;">Rotate ↻</strong> (90° clockwise) and <strong style="color: #fff;">Direction ⇄</strong> (reverse flow) to align arrows.</div>
-          <div><strong style="color: #fff;">4.</strong> Press <strong style="color: var(--accent-emerald);">Test Path ▶</strong> to test the directed route.</div>
+          <div><strong style="color: #fff;">4.</strong> Press <strong style="color: var(--accent-emerald);">Test Path ▶</strong> to evaluate the directed route.</div>
           <div><strong style="color: #fff;">5.</strong> 5 progressive levels. ${durationMins} minutes per level.</div>
         </div>
 
@@ -76,7 +76,6 @@ export class RotatePathView {
   private getArrowSvg(arrow: Direction | null): string {
     if (!arrow) return '';
 
-    // Standard arrow rotations relative to North (0 deg)
     const angleMap: Record<Direction, number> = {
       N: 0,
       NE: 45,
@@ -92,14 +91,14 @@ export class RotatePathView {
 
     return `
       <g transform="translate(50, 50) rotate(${angle}) translate(-50, -50)">
-        <line x1="50" y1="75" x2="50" y2="28" stroke="#f8fafc" stroke-width="8" stroke-linecap="round" />
-        <polygon points="50,20 34,42 66,42" fill="#f8fafc" />
+        <line x1="50" y1="74" x2="50" y2="28" class="corridor-arrow-shaft" />
+        <polygon points="50,18 33,40 67,40" class="corridor-arrow-head" />
       </g>
     `;
   }
 
   private getCorridorSvg(tile: PathTile): string {
-    if (tile.type === 'empty') return '';
+    if (tile.type === 'empty' || tile.type === 'blocked') return '';
 
     let corridorPath = '';
     switch (tile.type) {
@@ -151,19 +150,19 @@ export class RotatePathView {
       return;
     }
 
-    if (state.status === 'idle') return;
+    if (state.status === 'idle' || state.status === 'intro') return;
 
     const { level, grid, selectedRegion, remainingMs } = state as any;
     const settings = StorageService.getSettings();
-    const totalDurationMs = settings.rotateLevelDurationSec * 1000;
+    const totalDurationMs = (settings.rotateLevelDurationSec ?? 240) * 1000;
     const ratio = totalDurationMs > 0 ? remainingMs / totalDurationMs : 0;
 
-    // Create container shell if not built
+    // Build DOM structure if not yet constructed
     if (!this.element.querySelector('.path-header-bar')) {
       this.element.innerHTML = `
         <div class="path-header-bar">
           <div class="path-level-badge">Level <span class="lvl-num">1</span> / 5</div>
-          <div class="path-timer-slot" style="flex: 1; margin: 0 1rem;"></div>
+          <div class="path-timer-slot"></div>
         </div>
 
         <div class="path-board-wrapper">
@@ -210,20 +209,42 @@ export class RotatePathView {
     if (lvlNumEl) lvlNumEl.textContent = String(level);
     this.timerBar.update(remainingMs || 0, ratio);
 
+    // Disable buttons during test runner or transitions
+    const isBusy =
+      state.status === 'testing_path' ||
+      state.status === 'path_succeeded' ||
+      state.status === 'level_transition';
+
+    const btnRotate = this.element.querySelector('.btn-rotate') as HTMLButtonElement;
+    const btnFlip = this.element.querySelector('.btn-flip') as HTMLButtonElement;
+    const btnTest = this.element.querySelector('.btn-test') as HTMLButtonElement;
+
+    if (btnRotate) btnRotate.disabled = isBusy || selectedRegion === null;
+    if (btnFlip) btnFlip.disabled = isBusy || selectedRegion === null;
+    if (btnTest) btnTest.disabled = isBusy;
+
     // Update Feedback banner
     const feedbackSlot = this.element.querySelector('.path-feedback-slot');
     if (feedbackSlot) {
       if (state.status === 'path_failed') {
         feedbackSlot.innerHTML = `
           <div class="path-feedback-banner error">
-            ${state.reason} — Tap board to continue adjusting!
+            ${state.reason} — Tap to dismiss
           </div>
         `;
-        feedbackSlot.addEventListener('click', () => this.engine.dismissFailure(), { once: true });
+        feedbackSlot.addEventListener('click', () => this.engine.dismissFailure(), {
+          once: true,
+        });
       } else if (state.status === 'path_succeeded') {
         feedbackSlot.innerHTML = `
           <div class="path-feedback-banner success">
             Level Cleared! Path reached the cheese! 🧀
+          </div>
+        `;
+      } else if (state.status === 'level_transition') {
+        feedbackSlot.innerHTML = `
+          <div class="path-feedback-banner success">
+            Advancing to Level ${(state as any).nextLevel}...
           </div>
         `;
       } else {
@@ -233,7 +254,7 @@ export class RotatePathView {
 
     // Render 9x9 Grid Cells
     const gridEl = this.element.querySelector('.path-grid');
-    if (gridEl && grid) {
+    if (gridEl && grid && grid.tiles) {
       gridEl.innerHTML = '';
 
       for (let r = 0; r < 9; r++) {
@@ -244,11 +265,19 @@ export class RotatePathView {
           const localC = c % 3;
 
           const isRegionSelected = selectedRegion === regionIdx;
-          const isFailureCell = state.status === 'path_failed' && state.failurePoint?.row === r && state.failurePoint?.col === c;
-          const isActiveRunnerCell = state.status === 'testing_path' && (state as any).activeCoord?.row === r && (state as any).activeCoord?.col === c;
+          const isFailureCell =
+            state.status === 'path_failed' &&
+            state.failurePoint?.row === r &&
+            state.failurePoint?.col === c;
+          const isActiveRunnerCell =
+            state.status === 'testing_path' &&
+            (state as any).activeCoord?.row === r &&
+            (state as any).activeCoord?.col === c;
 
           const cell = document.createElement('div');
-          cell.className = `region-cell ${isRegionSelected ? 'region-selected' : ''} ${isFailureCell ? 'path-failure' : ''} ${isActiveRunnerCell ? 'path-active' : ''}`;
+          cell.className = `region-cell ${isRegionSelected ? 'region-selected' : ''} ${
+            isFailureCell ? 'path-failure' : ''
+          } ${isActiveRunnerCell ? 'path-active' : ''}`;
           cell.dataset.row = String(r);
           cell.dataset.col = String(c);
           cell.dataset.localR = String(localR);
@@ -257,7 +286,7 @@ export class RotatePathView {
 
           cell.innerHTML = this.getCorridorSvg(tile);
 
-          // Clicking any cell selects its 3x3 region
+          // Clicking any cell selects its containing 3x3 region
           cell.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             if (state.status === 'path_failed') {
@@ -286,6 +315,7 @@ export class RotatePathView {
         { label: 'Total Time', value: `${Math.round(stats.totalTimeMs / 1000)}s` },
       ],
       onReplay: () => {
+        this.element.innerHTML = '';
         this.engine.startSession();
       },
       onHome: () => {

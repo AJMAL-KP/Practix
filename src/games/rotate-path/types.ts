@@ -1,18 +1,29 @@
 export type Direction = 'N' | 'E' | 'S' | 'W' | 'NE' | 'SE' | 'SW' | 'NW';
 export type Port = 'N' | 'E' | 'S' | 'W';
 
-export type TileType = 'empty' | 'straight_h' | 'straight_v' | 'corner_ws' | 'corner_wn' | 'corner_es' | 'corner_en' | 'tee' | 'cross';
+export type TileType =
+  | 'empty'
+  | 'blocked'
+  | 'straight_h'
+  | 'straight_v'
+  | 'corner_ws'
+  | 'corner_wn'
+  | 'corner_es'
+  | 'corner_en'
+  | 'tee'
+  | 'cross';
 
 export interface PathTile {
   row: number; // 0 to 8
   col: number; // 0 to 8
   type: TileType;
   arrow: Direction | null;
-  ports: Port[]; // Physical connection openings
+  ports: Port[]; // Connection openings ('N', 'E', 'S', 'W')
+  isPath?: boolean;
 }
 
 export interface PathGrid {
-  tiles: PathTile[][]; // 9x9
+  tiles: PathTile[][]; // 9x9 matrix of typed tile states
   mouse: { row: number; col: number; entryDirection: Port };
   cheese: { row: number; col: number };
 }
@@ -25,6 +36,7 @@ export interface PathValidationResult {
 }
 
 export interface RotatePathStats {
+  levelsAttempted: number;
   levelsCompleted: number; // 0 to 5
   rotations: number;
   flips: number;
@@ -36,6 +48,7 @@ export interface RotatePathStats {
 
 export type RotatePathState =
   | { status: 'idle' }
+  | { status: 'intro' }
   | { status: 'ready'; level: number }
   | {
       status: 'playing';
@@ -47,6 +60,13 @@ export type RotatePathState =
       flips: number;
       testAttempts: number;
       failedTests: number;
+    }
+  | {
+      status: 'transforming';
+      level: number;
+      grid: PathGrid;
+      selectedRegion: number;
+      transformationType: 'rotate' | 'flip';
     }
   | {
       status: 'testing_path';
@@ -82,6 +102,21 @@ export type RotatePathState =
       stats: RotatePathStats;
     }
   | {
+      status: 'session_complete';
+      stats: RotatePathStats;
+    }
+  | {
       status: 'final_results';
       stats: RotatePathStats;
     };
+
+export type RotatePathEvent =
+  | { type: 'START_SESSION'; customDurationSec?: number; seed?: number }
+  | { type: 'SELECT_REGION'; regionIndex: number }
+  | { type: 'ROTATE_SELECTED' }
+  | { type: 'FLIP_SELECTED' }
+  | { type: 'TEST_PATH' }
+  | { type: 'DISMISS_FAILURE' }
+  | { type: 'TIMEOUT' }
+  | { type: 'REPLAY' }
+  | { type: 'RETURN_TO_MENU' };

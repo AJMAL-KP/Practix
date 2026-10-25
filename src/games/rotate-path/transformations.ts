@@ -2,19 +2,29 @@ import { Direction, PathTile, Port, TileType } from './types';
 
 export class RegionTransformations {
   /**
-   * Rotate a direction 90 degrees clockwise.
+   * Rotate a direction 90 degrees clockwise:
+   * N -> E -> S -> W -> N
+   * NE -> SE -> SW -> NW -> NE
    */
   static rotateDirection90(dir: Direction | null): Direction | null {
     if (!dir) return null;
     switch (dir) {
-      case 'N': return 'E';
-      case 'E': return 'S';
-      case 'S': return 'W';
-      case 'W': return 'N';
-      case 'NE': return 'SE';
-      case 'SE': return 'SW';
-      case 'SW': return 'NW';
-      case 'NW': return 'NE';
+      case 'N':
+        return 'E';
+      case 'E':
+        return 'S';
+      case 'S':
+        return 'W';
+      case 'W':
+        return 'N';
+      case 'NE':
+        return 'SE';
+      case 'SE':
+        return 'SW';
+      case 'SW':
+        return 'NW';
+      case 'NW':
+        return 'NE';
     }
   }
 
@@ -23,44 +33,65 @@ export class RegionTransformations {
    */
   static rotatePort90(port: Port): Port {
     switch (port) {
-      case 'N': return 'E';
-      case 'E': return 'S';
-      case 'S': return 'W';
-      case 'W': return 'N';
+      case 'N':
+        return 'E';
+      case 'E':
+        return 'S';
+      case 'S':
+        return 'W';
+      case 'W':
+        return 'N';
     }
   }
 
   /**
-   * Invert a direction 180 degrees (as in Direction Effect 2 -> 3).
+   * Invert a direction 180 degrees (Direction Effect / Flow Reversal):
+   * E <-> W, N <-> S, NE <-> SW, SE <-> NW
    */
   static invertDirection(dir: Direction | null): Direction | null {
     if (!dir) return null;
     switch (dir) {
-      case 'N': return 'S';
-      case 'S': return 'N';
-      case 'E': return 'W';
-      case 'W': return 'E';
-      case 'NE': return 'SW';
-      case 'SW': return 'NE';
-      case 'SE': return 'NW';
-      case 'NW': return 'SE';
+      case 'N':
+        return 'S';
+      case 'S':
+        return 'N';
+      case 'E':
+        return 'W';
+      case 'W':
+        return 'E';
+      case 'NE':
+        return 'SW';
+      case 'SW':
+        return 'NE';
+      case 'SE':
+        return 'NW';
+      case 'NW':
+        return 'SE';
     }
   }
 
   /**
-   * Reflect a direction horizontally (East <-> West).
+   * Reflect a direction horizontally (East <-> West, North/South unchanged).
    */
   static mirrorDirectionHorizontal(dir: Direction | null): Direction | null {
     if (!dir) return null;
     switch (dir) {
-      case 'N': return 'N';
-      case 'S': return 'S';
-      case 'E': return 'W';
-      case 'W': return 'E';
-      case 'NE': return 'NW';
-      case 'NW': return 'NE';
-      case 'SE': return 'SW';
-      case 'SW': return 'SE';
+      case 'N':
+        return 'N';
+      case 'S':
+        return 'S';
+      case 'E':
+        return 'W';
+      case 'W':
+        return 'E';
+      case 'NE':
+        return 'NW';
+      case 'NW':
+        return 'NE';
+      case 'SE':
+        return 'SW';
+      case 'SW':
+        return 'SE';
     }
   }
 
@@ -69,14 +100,17 @@ export class RegionTransformations {
    */
   static mirrorPortHorizontal(port: Port): Port {
     switch (port) {
-      case 'E': return 'W';
-      case 'W': return 'E';
-      default: return port;
+      case 'E':
+        return 'W';
+      case 'W':
+        return 'E';
+      default:
+        return port;
     }
   }
 
   /**
-   * Update tile type after rotating ports.
+   * Update tile type after transforming ports.
    */
   static deriveTileType(ports: Port[]): TileType {
     if (ports.length === 0) return 'empty';
@@ -97,7 +131,9 @@ export class RegionTransformations {
    * Rotates a single tile 90 degrees clockwise in place.
    */
   static rotateTile(tile: PathTile): PathTile {
-    if (tile.type === 'empty') return { ...tile };
+    if (tile.type === 'empty' || tile.type === 'blocked') {
+      return { ...tile };
+    }
 
     const rotatedPorts = tile.ports.map((p) => this.rotatePort90(p));
     const rotatedArrow = this.rotateDirection90(tile.arrow);
@@ -109,21 +145,29 @@ export class RegionTransformations {
       type: newType,
       arrow: rotatedArrow,
       ports: rotatedPorts,
+      isPath: tile.isPath,
     };
   }
 
   /**
    * Rotates a 3x3 region 90 degrees clockwise:
-   * Maps local coordinates (r, c) -> (c, 2 - r).
+   * Maps local coordinates (r, c) within the selected region to (c, 2 - r).
+   * Pure function: Returns a new 9x9 grid without mutating the input.
    */
   static rotateRegion(gridTiles: PathTile[][], regionIndex: number): PathTile[][] {
+    if (regionIndex < 0 || regionIndex > 8) {
+      throw new Error(`Invalid regionIndex: ${regionIndex}. Must be 0 to 8.`);
+    }
+
     const rBase = Math.floor(regionIndex / 3) * 3;
     const cBase = (regionIndex % 3) * 3;
 
-    // Clone the 9x9 grid
-    const newGrid: PathTile[][] = gridTiles.map((row) => row.map((tile) => ({ ...tile, ports: [...tile.ports] })));
+    // Deep clone the 9x9 grid
+    const newGrid: PathTile[][] = gridTiles.map((row) =>
+      row.map((tile) => ({ ...tile, ports: [...tile.ports] }))
+    );
 
-    // Snapshot of the original 3x3 tiles
+    // Snapshot original 3x3 tiles
     const originalSub: PathTile[][] = [];
     for (let r = 0; r < 3; r++) {
       originalSub[r] = [];
@@ -135,7 +179,7 @@ export class RegionTransformations {
       }
     }
 
-    // Map each cell to (c, 2 - r)
+    // Map each local cell (r, c) to (c, 2 - r)
     for (let r = 0; r < 3; r++) {
       for (let c = 0; c < 3; c++) {
         const destLocalR = c;
@@ -156,19 +200,29 @@ export class RegionTransformations {
   }
 
   /**
-   * Flip / Direction Effect on a 3x3 region.
-   * Inverts all arrow directions within the region (180° reversal).
+   * Flip / Direction Effect on a 3x3 region:
+   * Reverses arrow flow along the corridors within the region (180° reversal).
+   * Verified by reference screenshot examples: [→, ↘, ↓] -> [←, ↖, ↑].
+   * Pure function: Returns a new 9x9 grid without mutating input.
    */
   static invertRegionDirections(gridTiles: PathTile[][], regionIndex: number): PathTile[][] {
+    if (regionIndex < 0 || regionIndex > 8) {
+      throw new Error(`Invalid regionIndex: ${regionIndex}. Must be 0 to 8.`);
+    }
+
     const rBase = Math.floor(regionIndex / 3) * 3;
     const cBase = (regionIndex % 3) * 3;
 
-    const newGrid: PathTile[][] = gridTiles.map((row) => row.map((tile) => ({ ...tile, ports: [...tile.ports] })));
+    const newGrid: PathTile[][] = gridTiles.map((row) =>
+      row.map((tile) => ({ ...tile, ports: [...tile.ports] }))
+    );
 
     for (let r = 0; r < 3; r++) {
       for (let c = 0; c < 3; c++) {
-        const tile = newGrid[rBase + r][cBase + c];
-        if (tile.type !== 'empty') {
+        const targetRow = rBase + r;
+        const targetCol = cBase + c;
+        const tile = newGrid[targetRow][targetCol];
+        if (tile.type !== 'empty' && tile.type !== 'blocked' && tile.arrow !== null) {
           tile.arrow = this.invertDirection(tile.arrow);
         }
       }
@@ -179,12 +233,20 @@ export class RegionTransformations {
 
   /**
    * Mirror a 3x3 region horizontally: (r, c) -> (r, 2 - c).
+   * Reflects corridor geometry and horizontal vector components.
+   * Pure function.
    */
   static mirrorRegionHorizontal(gridTiles: PathTile[][], regionIndex: number): PathTile[][] {
+    if (regionIndex < 0 || regionIndex > 8) {
+      throw new Error(`Invalid regionIndex: ${regionIndex}. Must be 0 to 8.`);
+    }
+
     const rBase = Math.floor(regionIndex / 3) * 3;
     const cBase = (regionIndex % 3) * 3;
 
-    const newGrid: PathTile[][] = gridTiles.map((row) => row.map((tile) => ({ ...tile, ports: [...tile.ports] })));
+    const newGrid: PathTile[][] = gridTiles.map((row) =>
+      row.map((tile) => ({ ...tile, ports: [...tile.ports] }))
+    );
 
     const originalSub: PathTile[][] = [];
     for (let r = 0; r < 3; r++) {
@@ -205,17 +267,26 @@ export class RegionTransformations {
         const targetCol = cBase + destLocalC;
 
         const tile = originalSub[r][c];
-        const newPorts = tile.ports.map((p) => this.mirrorPortHorizontal(p));
-        const newArrow = this.mirrorDirectionHorizontal(tile.arrow);
-        const newType = this.deriveTileType(newPorts);
+        if (tile.type === 'empty' || tile.type === 'blocked') {
+          newGrid[targetRow][targetCol] = {
+            ...tile,
+            row: targetRow,
+            col: targetCol,
+          };
+        } else {
+          const newPorts = tile.ports.map((p) => this.mirrorPortHorizontal(p));
+          const newArrow = this.mirrorDirectionHorizontal(tile.arrow);
+          const newType = this.deriveTileType(newPorts);
 
-        newGrid[targetRow][targetCol] = {
-          row: targetRow,
-          col: targetCol,
-          type: newType,
-          arrow: newArrow,
-          ports: newPorts,
-        };
+          newGrid[targetRow][targetCol] = {
+            row: targetRow,
+            col: targetCol,
+            type: newType,
+            arrow: newArrow,
+            ports: newPorts,
+            isPath: tile.isPath,
+          };
+        }
       }
     }
 

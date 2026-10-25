@@ -6,16 +6,37 @@ import { RegionTransformations } from './transformations';
 import { PathGrid, RotatePathState, RotatePathStats } from './types';
 import { PathValidator } from './validator';
 
+/**
+ * Pure scoring function:
+ * - 1,000 points per completed level (up to 5,000)
+ * - Modest remaining time bonus (2 points per unused second if all 5 completed)
+ * - Modest 50 points penalty per failed path test
+ * - Clamped at 0 (never negative)
+ */
+export function calculateRotatePathScore(
+  levelsCompleted: number,
+  remainingTimeSec: number,
+  failedTests: number
+): number {
+  const levelScore = Math.max(0, levelsCompleted) * 1000;
+  const timeBonus = levelsCompleted === 5 ? Math.max(0, Math.round(remainingTimeSec * 2)) : 0;
+  const penalty = Math.max(0, failedTests) * 50;
+  return Math.max(0, levelScore + timeBonus - penalty);
+}
+
 export class RotatePathEngine {
   private level: number = 1;
   private grid!: PathGrid;
   private state: RotatePathState = { status: 'idle' };
   private timer: MonotonicTimer;
   private levelDurationMs: number = 240000;
+  private currentDeadline: number | null = null;
   private levelStartTime: number = 0;
   private totalTimeSpentMs: number = 0;
+  private sessionCommitted: boolean = false;
 
   private stats: RotatePathStats = {
+    levelsAttempted: 0,
     levelsCompleted: 0,
     rotations: 0,
     flips: 0,
@@ -33,7 +54,7 @@ export class RotatePathEngine {
     this.generator = new RotatePathGenerator();
     this.timer = new MonotonicTimer({
       onTick: (remainingMs) => {
-        if (this.state.status === 'playing') {
+        if (this.state.status === 'playing' || this.state.status === 'path_failed') {
           this.state = {
             ...this.state,
             remainingMs,
@@ -67,21 +88,25 @@ export class RotatePathEngine {
     return { ...this.stats };
   }
 
+  getGrid(): PathGrid {
+    return this.grid;
+  }
+
   startSession(customDurationSec?: number, seed?: number): void {
     this.clearAnimation();
     this.timer.stop();
+    this.sessionCommitted = false;
 
-    if (seed !== undefined) {
-      this.generator = new RotatePathGenerator(seed);
-    }
+    this.generator = new RotatePathGenerator(seed);
 
     const settings = StorageService.getSettings();
-    const durationSec = customDurationSec ?? settings.rotateLevelDurationSec;
+    const durationSec = customDurationSec ?? settings.rotateLevelDurationSec ?? 240;
     this.levelDurationMs = Math.max(30, durationSec) * 1000;
 
     this.level = 1;
     this.totalTimeSpentMs = 0;
     this.stats = {
+      levelsAttempted: 0,
       levelsCompleted: 0,
       rotations: 0,
       flips: 0,
@@ -95,15 +120,22 @@ export class RotatePathEngine {
   }
 
   private startLevel(lvl: number): void {
+    if (lvl > 5) {
+      this.finishSession(true);
+      return;
+    }
+
     this.level = lvl;
     this.grid = this.generator.generateLevel(lvl);
     this.levelStartTime = performance.now();
+    this.currentDeadline = this.levelStartTime + this.levelDurationMs;
+    this.stats.levelsAttempted = lvl;
 
     this.state = {
       status: 'playing',
       level: lvl,
       grid: this.grid,
-      selectedRegion: 4, // Center region pre-selected
+      selectedRegion: 4, // Center region 4 pre-selected
       remainingMs: this.levelDurationMs,
       rotations: this.stats.rotations,
       flips: this.stats.flips,
@@ -116,8 +148,18 @@ export class RotatePathEngine {
   }
 
   selectRegion(regionIndex: number): void {
-    if (this.state.status !== 'playing') return;
-    if (regionIndex < 0 || regionIndex > 8) return;
+    // Only accept selection in active playing or path_failed states
+    if (this.state.status !== 'playing' && this.state.status !== 'path_failed') {
+      return;
+    }
+    if (regionIndex < 0 || regionIndex > 8) {
+      return;
+    }
+
+    // Dismiss failure if in path_failed
+    if (this.state.status === 'path_failed') {
+      this.dismissFailure();
+    }
 
     this.state = {
       ...this.state,
@@ -127,9 +169,19 @@ export class RotatePathEngine {
   }
 
   rotateSelected(): void {
-    if (this.state.status !== 'playing' || this.state.selectedRegion === null) return;
+    if (this.state.status !== 'playing' || this.state.selectedRegion === null) {
+      return;
+    }
 
-    const newTiles = RegionTransformations.rotateRegion(this.grid.tiles, this.state.selectedRegion);
+    // Authoritative deadline check
+    if (this.currentDeadline !== null && performance.now() >= this.currentDeadline) {
+      this.handleTimeout();
+      return;
+    }
+
+    const regionIdx = this.state.selectedRegion;
+    const newTiles = RegionTransformations.rotateRegion(this.grid.tiles, regionIdx);
+
     this.grid = {
       ...this.grid,
       tiles: newTiles,
@@ -146,10 +198,19 @@ export class RotatePathEngine {
   }
 
   flipSelected(): void {
-    if (this.state.status !== 'playing' || this.state.selectedRegion === null) return;
+    if (this.state.status !== 'playing' || this.state.selectedRegion === null) {
+      return;
+    }
 
-    // Flip / Direction toggle reverses directions
-    const newTiles = RegionTransformations.invertRegionDirections(this.grid.tiles, this.state.selectedRegion);
+    // Authoritative deadline check
+    if (this.currentDeadline !== null && performance.now() >= this.currentDeadline) {
+      this.handleTimeout();
+      return;
+    }
+
+    const regionIdx = this.state.selectedRegion;
+    const newTiles = RegionTransformations.invertRegionDirections(this.grid.tiles, regionIdx);
+
     this.grid = {
       ...this.grid,
       tiles: newTiles,
@@ -166,12 +227,20 @@ export class RotatePathEngine {
   }
 
   testPath(): void {
-    if (this.state.status !== 'playing') return;
+    if (this.state.status !== 'playing') {
+      return;
+    }
+
+    // Authoritative deadline check
+    if (this.currentDeadline !== null && performance.now() >= this.currentDeadline) {
+      this.handleTimeout();
+      return;
+    }
 
     this.stats.testAttempts++;
     const validation = PathValidator.validate(this.grid);
 
-    // Enter testing_path state for step-by-step visual feedback
+    // Enter testing_path state
     const coords = validation.visitedCoordinates;
     let stepIndex = 0;
 
@@ -185,7 +254,7 @@ export class RotatePathEngine {
     };
     this.notify();
 
-    const stepInterval = 40; // 40ms per step
+    const stepInterval = 35; // 35ms per step for smooth traversal
     const advanceStep = () => {
       stepIndex++;
       if (stepIndex < coords.length) {
@@ -193,18 +262,23 @@ export class RotatePathEngine {
           status: 'testing_path',
           level: this.level,
           grid: this.grid,
-          selectedRegion: this.state.status === 'testing_path' ? this.state.selectedRegion : null,
+          selectedRegion:
+            this.state.status === 'testing_path' ? this.state.selectedRegion : null,
           activeCoord: coords[stepIndex],
           visitedCoordinates: coords.slice(0, stepIndex),
         };
         this.notify();
         this.animationTimerId = setTimeout(advanceStep, stepInterval) as unknown as number;
       } else {
-        // Animation completed; resolve validation outcome
+        // Validation outcome
         if (validation.success) {
           this.handleSuccess();
         } else {
-          this.handleFailure(validation.failurePoint || coords[coords.length - 1] || { row: 4, col: 0 }, validation.reason || 'Path blocked');
+          this.handleFailure(
+            validation.failurePoint ||
+              coords[coords.length - 1] || { row: 4, col: 0 },
+            validation.reason || 'Path blocked'
+          );
         }
       }
     };
@@ -213,7 +287,12 @@ export class RotatePathEngine {
   }
 
   private handleSuccess(): void {
+    if (this.state.status !== 'playing' && this.state.status !== 'testing_path') {
+      return;
+    }
+
     this.timer.stop();
+    this.currentDeadline = null;
     const timeSpent = performance.now() - this.levelStartTime;
     this.totalTimeSpentMs += timeSpent;
     this.stats.levelsCompleted++;
@@ -239,14 +318,17 @@ export class RotatePathEngine {
 
         this.animationTimerId = setTimeout(() => {
           this.startLevel(this.level + 1);
-        }, 1000) as unknown as number;
+        }, 900) as unknown as number;
       } else {
         this.finishSession(true);
       }
-    }, 1200) as unknown as number;
+    }, 1100) as unknown as number;
   }
 
-  private handleFailure(failurePoint: { row: number; col: number }, reason: string): void {
+  private handleFailure(
+    failurePoint: { row: number; col: number },
+    reason: string
+  ): void {
     this.stats.failedTests++;
     SoundController.playPathFail();
 
@@ -254,7 +336,8 @@ export class RotatePathEngine {
       status: 'path_failed',
       level: this.level,
       grid: this.grid,
-      selectedRegion: this.state.status === 'testing_path' ? this.state.selectedRegion : null,
+      selectedRegion:
+        this.state.status === 'testing_path' ? this.state.selectedRegion : 4,
       failurePoint,
       reason,
       remainingMs: this.timer.getRemainingMs(),
@@ -279,8 +362,17 @@ export class RotatePathEngine {
     this.notify();
   }
 
-  private handleTimeout(): void {
+  handleTimeout(): void {
+    if (
+      this.state.status !== 'playing' &&
+      this.state.status !== 'path_failed' &&
+      this.state.status !== 'testing_path'
+    ) {
+      return;
+    }
+
     this.timer.stop();
+    this.currentDeadline = null;
     this.clearAnimation();
     this.totalTimeSpentMs += this.levelDurationMs;
     this.stats.totalTimeMs = this.totalTimeSpentMs;
@@ -291,13 +383,23 @@ export class RotatePathEngine {
 
   private finishSession(completedAll: boolean): void {
     this.timer.stop();
+    this.currentDeadline = null;
     this.clearAnimation();
 
-    // Calculate score
-    const levelScore = this.stats.levelsCompleted * 1000;
-    const remainingTimeBonus = completedAll ? Math.max(0, Math.round((this.levelDurationMs - (performance.now() - this.levelStartTime)) / 1000) * 2) : 0;
-    const penalty = this.stats.failedTests * 50;
-    this.stats.score = Math.max(0, levelScore + remainingTimeBonus - penalty);
+    if (this.sessionCommitted) {
+      return;
+    }
+    this.sessionCommitted = true;
+
+    const remainingSec = completedAll
+      ? Math.max(0, Math.round((this.levelDurationMs - (performance.now() - this.levelStartTime)) / 1000))
+      : 0;
+
+    this.stats.score = calculateRotatePathScore(
+      this.stats.levelsCompleted,
+      remainingSec,
+      this.stats.failedTests
+    );
 
     StorageService.addHistoryRecord({
       gameId: 'rotate-path',
@@ -326,9 +428,14 @@ export class RotatePathEngine {
     }
   }
 
+  replay(): void {
+    this.startSession(this.levelDurationMs / 1000);
+  }
+
   destroy(): void {
     this.timer.stop();
     this.clearAnimation();
+    this.currentDeadline = null;
     this.listeners = [];
   }
 }

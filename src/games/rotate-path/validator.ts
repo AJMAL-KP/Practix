@@ -32,6 +32,7 @@ export class PathValidator {
 
   /**
    * Deterministically validates the directed path from the Mouse to the Cheese.
+   * Pure function: Does NOT mutate the grid.
    */
   static validate(grid: PathGrid): PathValidationResult {
     let currR = grid.mouse.row;
@@ -41,7 +42,7 @@ export class PathValidator {
     const visited: Set<string> = new Set();
     const visitedCoordinates: Array<{ row: number; col: number }> = [];
 
-    // Max steps bounded to board size to guarantee termination
+    // Max steps bounded to board dimensions (81 cells) to guarantee termination
     const maxSteps = 81;
     let stepCount = 0;
 
@@ -53,7 +54,10 @@ export class PathValidator {
         return {
           success: false,
           visitedCoordinates,
-          failurePoint: { row: Math.max(0, Math.min(8, currR)), col: Math.max(0, Math.min(8, currC)) },
+          failurePoint: {
+            row: Math.max(0, Math.min(8, currR)),
+            col: Math.max(0, Math.min(8, currC)),
+          },
           reason: 'Path leads outside the 9×9 board boundaries',
         };
       }
@@ -73,27 +77,27 @@ export class PathValidator {
 
       const tile = grid.tiles[currR][currC];
 
-      // Check empty tile
-      if (tile.type === 'empty') {
+      // Check empty or blocked tile
+      if (tile.type === 'empty' || tile.type === 'blocked') {
         return {
           success: false,
           visitedCoordinates,
           failurePoint: { row: currR, col: currC },
-          reason: 'Path blocked by empty tile',
+          reason: tile.type === 'blocked' ? 'Path blocked by wall' : 'Path blocked by empty tile',
         };
       }
 
-      // Check incoming connection
+      // Check incoming connection port
       if (!tile.ports.includes(inPort)) {
         return {
           success: false,
           visitedCoordinates,
           failurePoint: { row: currR, col: currC },
-          reason: `Tile does not connect to incoming ${inPort} side`,
+          reason: `Tile does not connect to incoming ${inPort} corridor`,
         };
       }
 
-      // If we reached the cheese destination
+      // Check if cheese destination is reached
       if (currR === grid.cheese.row && currC === grid.cheese.col) {
         return {
           success: true,
@@ -102,20 +106,20 @@ export class PathValidator {
         };
       }
 
-      // Find exit port (for standard 2-port corridors, the other port)
+      // Determine outgoing port (for standard 2-port corridors)
       const outPorts = tile.ports.filter((p) => p !== inPort);
       if (outPorts.length === 0) {
         return {
           success: false,
           visitedCoordinates,
           failurePoint: { row: currR, col: currC },
-          reason: 'Dead end corridor',
+          reason: 'Dead-end corridor',
         };
       }
 
       const outPort = outPorts[0];
 
-      // Verify arrow compatibility
+      // Verify directional arrow compatibility
       if (!this.isArrowCompatible(tile.arrow, inPort, outPort)) {
         return {
           success: false,
@@ -125,7 +129,7 @@ export class PathValidator {
         };
       }
 
-      // Calculate next coordinate
+      // Compute next coordinates
       let nextR = currR;
       let nextC = currC;
       let nextInPort: Port;
