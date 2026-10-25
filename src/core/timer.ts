@@ -54,15 +54,14 @@ export class MonotonicTimer {
   private scheduleNextTick(): void {
     if (!this.isRunning || this.hasTimedOut) return;
 
-    if (typeof window !== 'undefined') {
-      this.timerId = window.setTimeout(() => {
-        if (!this.isRunning || this.hasTimedOut) return;
-        this.checkDeadline();
-        if (this.isRunning && !this.hasTimedOut) {
-          this.scheduleNextTick();
-        }
-      }, 50); // 50ms tick frequency for silky smooth 20fps progress bar updates
-    }
+    const setTimer = typeof window !== 'undefined' ? window.setTimeout : setTimeout;
+    this.timerId = setTimer(() => {
+      if (!this.isRunning || this.hasTimedOut) return;
+      this.checkDeadline();
+      if (this.isRunning && !this.hasTimedOut) {
+        this.scheduleNextTick();
+      }
+    }, 50) as unknown as number;
   }
 
   private checkDeadline(): void {

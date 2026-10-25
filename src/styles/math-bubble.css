@@ -1,174 +1,331 @@
-/* Math Bubble Rush Styles */
+/* Math Bubble Rush — High Fidelity Aesthetics */
 
 .math-game-container {
   display: flex;
   flex-direction: column;
   flex: 1;
   width: 100%;
-  gap: 1.25rem;
+  max-width: 680px;
+  margin: 0 auto;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  min-height: calc(100vh - 120px);
 }
 
-.math-header-bar {
+/* Header & Timer Section */
+.math-top-bar {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0.5rem 0.25rem;
+  width: 100%;
+}
+
+.math-status-row {
+  display: flex;
   justify-content: space-between;
-  padding: 0.5rem 0.25rem;
+  align-items: center;
 }
 
-.math-question-badge {
-  font-size: 0.95rem;
-  font-weight: 700;
+.math-countdown-display {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.math-countdown-number {
+  font-size: 1.75rem;
+  line-height: 1;
   color: var(--accent-cyan);
-  background: rgba(6, 182, 212, 0.12);
-  border: 1px solid rgba(6, 182, 212, 0.3);
-  padding: 0.35rem 0.85rem;
-  border-radius: 9999px;
+  text-shadow: 0 0 12px var(--accent-cyan-glow);
 }
 
-.math-penalties-badge {
+.math-countdown-display.warning .math-countdown-number {
+  color: var(--accent-amber);
+  text-shadow: 0 0 12px var(--accent-amber-glow);
+}
+
+.math-countdown-display.critical .math-countdown-number {
+  color: var(--accent-rose);
+  text-shadow: 0 0 16px var(--accent-rose-glow);
+  animation: pulseCritical 0.8s infinite alternate ease-in-out;
+}
+
+.math-countdown-unit {
   font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.math-question-indicator {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.math-penalty-indicator {
+  font-size: 0.8rem;
   font-weight: 600;
-  color: #fda4af;
+  color: var(--accent-rose);
   background: rgba(244, 63, 94, 0.12);
   border: 1px solid rgba(244, 63, 94, 0.25);
-  padding: 0.35rem 0.75rem;
+  padding: 0.2rem 0.6rem;
   border-radius: 9999px;
+  transition: opacity 0.2s ease;
 }
 
-/* Timer Bar */
-.timer-bar-container {
+/* Horizontal Progress Bar */
+.math-progress-wrapper {
   width: 100%;
   height: 8px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 9999px;
   overflow: hidden;
   position: relative;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
-.timer-bar-fill {
+.math-progress-fill {
   height: 100%;
   width: 100%;
-  background: linear-gradient(to right, var(--accent-cyan), var(--accent-emerald));
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-emerald));
   border-radius: 9999px;
   transition: width 0.05s linear;
-  box-shadow: 0 0 10px var(--accent-cyan-glow);
+  box-shadow: 0 0 12px var(--accent-cyan-glow);
 }
 
-.timer-bar-fill.warning {
-  background: linear-gradient(to right, var(--accent-amber), var(--accent-rose));
-  box-shadow: 0 0 10px var(--accent-amber-glow);
+.math-progress-fill.warning {
+  background: linear-gradient(90deg, var(--accent-amber), #ea580c);
+  box-shadow: 0 0 12px var(--accent-amber-glow);
 }
 
-.timer-bar-fill.critical {
+.math-progress-fill.critical {
   background: var(--accent-rose);
-  box-shadow: 0 0 14px var(--accent-rose-glow);
+  box-shadow: 0 0 16px var(--accent-rose-glow);
 }
 
-.math-instruction-hint {
-  text-align: center;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-}
-
-/* Bubbles Arena */
+/* Arena & Non-linear Bubble Positioning */
 .math-bubbles-arena {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-around;
-  min-height: 380px;
-  padding: 1rem 0;
-  gap: 1.5rem;
-}
-
-@media (min-width: 500px) {
-  .math-bubbles-arena {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
-    justify-items: center;
-    align-items: center;
-    gap: 1.5rem;
-  }
-
-  .math-bubble-wrapper:nth-child(3) {
-    grid-column: 1 / -1;
-  }
-}
-
-.math-bubble-wrapper {
   position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 440px;
+  max-height: 620px;
+  margin: 1rem auto;
+  border-radius: 20px;
+  background: radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.5) 0%, rgba(9, 13, 22, 0) 75%);
+  touch-action: manipulation;
 }
 
-/* The Bubble Element */
+/* Asymmetric / Organic Placement of 3 Bubbles */
+.bubble-slot {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+}
+
+/* Bubble 0: Upper Left offset */
+.bubble-slot:nth-child(1) {
+  top: 12%;
+  left: 12%;
+  animation: floatSlot1 6s infinite ease-in-out;
+}
+
+/* Bubble 1: Upper Right offset */
+.bubble-slot:nth-child(2) {
+  top: 20%;
+  right: 12%;
+  animation: floatSlot2 7s infinite ease-in-out 0.5s;
+}
+
+/* Bubble 2: Lower Center */
+.bubble-slot:nth-child(3) {
+  bottom: 14%;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: floatSlot3 6.5s infinite ease-in-out 1s;
+}
+
+@media (max-width: 480px) {
+  .bubble-slot:nth-child(1) {
+    top: 10%;
+    left: 8%;
+  }
+
+  .bubble-slot:nth-child(2) {
+    top: 22%;
+    right: 8%;
+  }
+
+  .bubble-slot:nth-child(3) {
+    bottom: 12%;
+    left: 50%;
+  }
+}
+
+/* The tactile glowing bubble */
 .math-bubble {
-  width: 120px;
-  height: 120px;
+  width: clamp(118px, 28vw, 155px);
+  height: clamp(118px, 28vw, 155px);
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, rgba(51, 65, 85, 0.9), rgba(15, 23, 42, 0.95));
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), inset 0 2px 6px rgba(255, 255, 255, 0.15);
+  background: radial-gradient(circle at 35% 30%, rgba(40, 53, 76, 0.95), rgba(15, 23, 42, 0.98));
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 
+    0 14px 34px rgba(0, 0, 0, 0.65), 
+    inset 0 3px 8px rgba(255, 255, 255, 0.18),
+    inset 0 -4px 10px rgba(0, 0, 0, 0.4),
+    0 0 16px rgba(6, 182, 212, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform var(--transition-bounce), border-color var(--transition-normal), box-shadow var(--transition-normal);
   position: relative;
+  transition: 
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), 
+    border-color 0.25s ease, 
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Specular glass glare reflection on top of bubble */
+.math-bubble::before {
+  content: '';
+  position: absolute;
+  top: 9%;
+  left: 20%;
+  width: 40%;
+  height: 20%;
+  background: radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 80%);
+  border-radius: 50%;
+  transform: rotate(-25deg);
+  pointer-events: none;
 }
 
 .math-bubble:hover {
-  transform: scale(1.06);
+  transform: scale(1.07);
   border-color: var(--accent-cyan);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6), 0 0 16px var(--accent-cyan-glow);
+  box-shadow: 
+    0 18px 40px rgba(0, 0, 0, 0.75), 
+    0 0 24px var(--accent-cyan-glow),
+    inset 0 3px 8px rgba(255, 255, 255, 0.25);
 }
 
 .math-bubble:active {
-  transform: scale(0.96);
+  transform: scale(0.95);
 }
 
+/* Centered expression text */
 .bubble-expression {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: clamp(1.15rem, 3.8vw, 1.45rem);
+  font-weight: 800;
   letter-spacing: -0.01em;
-  color: #fff;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
   pointer-events: none;
+  white-space: nowrap;
 }
 
-/* Selected State */
+/* Correct Selection State */
 .math-bubble.selected {
-  background: radial-gradient(circle at 35% 35%, rgba(16, 185, 129, 0.4), rgba(6, 78, 59, 0.9));
+  background: radial-gradient(circle at 35% 30%, rgba(16, 185, 129, 0.5), rgba(6, 78, 59, 0.95));
   border-color: var(--accent-emerald);
-  box-shadow: 0 0 24px var(--accent-emerald-glow);
+  box-shadow: 
+    0 0 30px var(--accent-emerald-glow), 
+    0 14px 34px rgba(0, 0, 0, 0.6),
+    inset 0 3px 10px rgba(255, 255, 255, 0.3);
   pointer-events: none;
+  cursor: default;
+  transform: scale(1.02);
 }
 
-.bubble-badge {
+.math-bubble.selected .bubble-expression {
+  color: #ecfdf5;
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+/* Ascending sequence badge on correct bubble */
+.bubble-sequence-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 32px;
-  height: 32px;
+  top: -6px;
+  right: -6px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: var(--accent-emerald);
-  color: #fff;
-  font-weight: 800;
-  font-size: 0.95rem;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  animation: scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5), 0 0 10px var(--accent-emerald-glow);
+  border: 2px solid #ffffff;
+  animation: badgePop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-/* Error / Incorrect Shake */
+/* Incorrect Selection Error State */
 .math-bubble.incorrect {
-  border-color: var(--accent-rose);
-  background: radial-gradient(circle at 35% 35%, rgba(244, 63, 94, 0.4), rgba(136, 19, 55, 0.9));
-  box-shadow: 0 0 24px var(--accent-rose-glow);
-  animation: shake 0.35s ease-in-out;
+  border-color: var(--accent-rose) !important;
+  background: radial-gradient(circle at 35% 30%, rgba(244, 63, 94, 0.55), rgba(136, 19, 55, 0.95)) !important;
+  box-shadow: 0 0 32px var(--accent-rose-glow), 0 14px 30px rgba(0, 0, 0, 0.6) !important;
+  animation: bubbleShake 0.35s ease-in-out;
+}
+
+/* Question Cleared Celebration State */
+.math-game-container.cleared-celebration .math-bubble.selected {
+  box-shadow: 0 0 45px var(--accent-emerald-glow);
+  filter: brightness(1.15);
+}
+
+/* Animations */
+@keyframes badgePop {
+  0% {
+    transform: scale(0) rotate(-45deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes bubbleShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-10px) rotate(-3deg); }
+  40% { transform: translateX(10px) rotate(3deg); }
+  60% { transform: translateX(-7px) rotate(-2deg); }
+  80% { transform: translateX(7px) rotate(2deg); }
+}
+
+@keyframes floatSlot1 {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(1.5deg); }
+}
+
+@keyframes floatSlot2 {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(-1.5deg); }
+}
+
+@keyframes floatSlot3 {
+  0%, 100% { transform: translate(-50%, 0px) rotate(0deg); }
+  50% { transform: translate(-50%, -9px) rotate(1deg); }
+}
+
+@keyframes pulseCritical {
+  0% { transform: scale(1); filter: drop-shadow(0 0 4px var(--accent-rose-glow)); }
+  100% { transform: scale(1.05); filter: drop-shadow(0 0 12px var(--accent-rose-glow)); }
 }

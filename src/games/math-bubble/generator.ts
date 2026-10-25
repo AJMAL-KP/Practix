@@ -1,10 +1,117 @@
 import { ExactDecimal } from '../../core/exact-math';
 import { SeededRNG } from '../../core/rng';
-import { MathBubble, MathQuestion } from './types';
+import {
+  ArithmeticExpression,
+  DifficultyConfig,
+  MathBubble,
+  MathOperator,
+  MathQuestion,
+} from './types';
 
-interface ExpressionResult {
-  expr: string;
-  value: ExactDecimal;
+/**
+ * Pure evaluation function using ExactDecimal
+ */
+export function evaluateExpression(
+  left: ExactDecimal,
+  operator: MathOperator,
+  right: ExactDecimal
+): ExactDecimal {
+  switch (operator) {
+    case '+':
+      return left.add(right);
+    case '−':
+      return left.subtract(right);
+    case '×':
+      return left.multiply(right);
+  }
+}
+
+/**
+ * Formatted display string strictly derived from the same operands and operator
+ */
+export function formatExpression(
+  left: ExactDecimal,
+  operator: MathOperator,
+  right: ExactDecimal
+): string {
+  return `${left.toString()} ${operator} ${right.toString()}`;
+}
+
+/**
+ * Creates an immutable ArithmeticExpression where value and displayString
+ * derive strictly from the same underlying operands and operator.
+ */
+export function createArithmeticExpression(
+  id: string,
+  left: ExactDecimal,
+  operator: MathOperator,
+  right: ExactDecimal
+): ArithmeticExpression {
+  const value = evaluateExpression(left, operator, right);
+  const displayString = formatExpression(left, operator, right);
+  return {
+    id,
+    leftOperand: left,
+    operator,
+    rightOperand: right,
+    value,
+    displayString,
+  };
+}
+
+/**
+ * Pure function mapping question index (0 to 24) to its DifficultyConfig.
+ */
+export function getDifficultyConfig(questionIndex: number): DifficultyConfig {
+  if (questionIndex < 0 || questionIndex >= 25) {
+    throw new Error(`Invalid question index: ${questionIndex}. Must be between 0 and 24.`);
+  }
+
+  if (questionIndex <= 4) {
+    return {
+      tier: 1,
+      name: 'Novice',
+      operators: ['+', '−'],
+      allowDecimals: false,
+      allowNegatives: false,
+      minOperand: 2,
+      maxOperand: 25,
+    };
+  }
+
+  if (questionIndex <= 9) {
+    return {
+      tier: 2,
+      name: 'Intermediate',
+      operators: ['+', '−', '×'],
+      allowDecimals: false,
+      allowNegatives: false,
+      minOperand: 3,
+      maxOperand: 75,
+    };
+  }
+
+  if (questionIndex <= 16) {
+    return {
+      tier: 3,
+      name: 'Advanced',
+      operators: ['+', '−', '×'],
+      allowDecimals: true,
+      allowNegatives: false,
+      minOperand: 1,
+      maxOperand: 35,
+    };
+  }
+
+  return {
+    tier: 4,
+    name: 'Master',
+    operators: ['+', '−', '×'],
+    allowDecimals: true,
+    allowNegatives: true,
+    minOperand: 1,
+    maxOperand: 50,
+  };
 }
 
 export class MathQuestionGenerator {
@@ -15,153 +122,199 @@ export class MathQuestionGenerator {
   }
 
   /**
-   * Generates a single arithmetic expression for a given question index (0 to 24).
+   * Generates a single arithmetic expression matching the difficulty configuration.
    */
-  private generateExpression(questionIndex: number): ExpressionResult {
-    // Determine tier (1 to 4) based on questionIndex
-    const tier = questionIndex < 5 ? 1 : questionIndex < 10 ? 2 : questionIndex < 17 ? 3 : 4;
+  private generateExpressionCandidate(
+    config: DifficultyConfig,
+    indexInQuestion: number
+  ): ArithmeticExpression {
+    const exprId = `expr_${indexInQuestion}_${this.rng.nextInt(1000, 9999)}`;
 
-    if (tier === 1) {
-      // Tier 1: Simple addition & subtraction with positive integers
-      const op = this.rng.next() < 0.5 ? '+' : '-';
+    if (config.tier === 1) {
+      // Tier 1: Small integer operands, addition and subtraction, positive results
+      const op = this.rng.next() < 0.5 ? '+' : '−';
       if (op === '+') {
-        const a = this.rng.nextInt(3, 25);
-        const b = this.rng.nextInt(2, 25);
-        const val = ExactDecimal.from(a).add(ExactDecimal.from(b));
-        return { expr: `${a} + ${b}`, value: val };
+        const a = this.rng.nextInt(config.minOperand, config.maxOperand);
+        const b = this.rng.nextInt(config.minOperand, config.maxOperand);
+        return createArithmeticExpression(exprId, ExactDecimal.from(a), '+', ExactDecimal.from(b));
       } else {
-        const a = this.rng.nextInt(15, 50);
-        const b = this.rng.nextInt(2, a - 1);
-        const val = ExactDecimal.from(a).subtract(ExactDecimal.from(b));
-        return { expr: `${a} - ${b}`, value: val };
+        const a = this.rng.nextInt(15, 45);
+        const b = this.rng.nextInt(config.minOperand, a - 1);
+        return createArithmeticExpression(exprId, ExactDecimal.from(a), '−', ExactDecimal.from(b));
       }
     }
 
-    if (tier === 2) {
-      // Tier 2: Addition, subtraction, single-digit multiplication
+    if (config.tier === 2) {
+      // Tier 2: Larger operands, multiplication, mixed operators
       const roll = this.rng.next();
       if (roll < 0.4) {
         // Multiplication
-        const a = this.rng.nextInt(4, 12);
+        const a = this.rng.nextInt(3, 12);
         const b = this.rng.nextInt(3, 9);
-        const val = ExactDecimal.from(a).multiply(ExactDecimal.from(b));
-        return { expr: `${a} × ${b}`, value: val };
+        return createArithmeticExpression(exprId, ExactDecimal.from(a), '×', ExactDecimal.from(b));
       } else if (roll < 0.7) {
         // Larger addition
-        const a = this.rng.nextInt(20, 75);
-        const b = this.rng.nextInt(15, 60);
-        const val = ExactDecimal.from(a).add(ExactDecimal.from(b));
-        return { expr: `${a} + ${b}`, value: val };
+        const a = this.rng.nextInt(20, 65);
+        const b = this.rng.nextInt(15, 50);
+        return createArithmeticExpression(exprId, ExactDecimal.from(a), '+', ExactDecimal.from(b));
       } else {
         // Larger subtraction
-        const a = this.rng.nextInt(40, 100);
-        const b = this.rng.nextInt(15, 38);
-        const val = ExactDecimal.from(a).subtract(ExactDecimal.from(b));
-        return { expr: `${a} - ${b}`, value: val };
+        const a = this.rng.nextInt(40, 95);
+        const b = this.rng.nextInt(10, 38);
+        return createArithmeticExpression(exprId, ExactDecimal.from(a), '−', ExactDecimal.from(b));
       }
     }
 
-    if (tier === 3) {
+    if (config.tier === 3) {
       // Tier 3: Decimal operands (+, -, x)
       const roll = this.rng.next();
       if (roll < 0.4) {
         // Decimal addition
-        const aInt = this.rng.nextInt(1, 15);
-        const aFrac = this.rng.pick([1, 2, 4, 5, 6, 8]);
+        const aInt = this.rng.nextInt(1, 14);
+        const aFrac = this.rng.pick([2, 5, 8]);
         const bInt = this.rng.nextInt(1, 12);
-        const bFrac = this.rng.pick([2, 5, 8]);
+        const bFrac = this.rng.pick([2, 5]);
         const aStr = `${aInt}.${aFrac}`;
         const bStr = `${bInt}.${bFrac}`;
-        const val = ExactDecimal.from(aStr).add(ExactDecimal.from(bStr));
-        return { expr: `${aStr} + ${bStr}`, value: val };
+        return createArithmeticExpression(
+          exprId,
+          ExactDecimal.from(aStr),
+          '+',
+          ExactDecimal.from(bStr)
+        );
       } else if (roll < 0.7) {
         // Decimal subtraction
         const aInt = this.rng.nextInt(8, 25);
         const aFrac = this.rng.pick([0, 5]);
         const bInt = this.rng.nextInt(1, aInt - 2);
         const bFrac = this.rng.pick([2, 4, 6, 8]);
-        const aStr = `${aInt}.${aFrac}`;
+        const aStr = aFrac === 0 ? `${aInt}` : `${aInt}.${aFrac}`;
         const bStr = `${bInt}.${bFrac}`;
-        const val = ExactDecimal.from(aStr).subtract(ExactDecimal.from(bStr));
-        return { expr: `${aStr} - ${bStr}`, value: val };
+        return createArithmeticExpression(
+          exprId,
+          ExactDecimal.from(aStr),
+          '−',
+          ExactDecimal.from(bStr)
+        );
       } else {
         // Decimal multiplication
         const aStr = this.rng.pick(['1.5', '2.5', '3.5', '0.5', '4.5']);
         const b = this.rng.nextInt(2, 8);
-        const val = ExactDecimal.from(aStr).multiply(ExactDecimal.from(b));
-        return { expr: `${aStr} × ${b}`, value: val };
+        return createArithmeticExpression(
+          exprId,
+          ExactDecimal.from(aStr),
+          '×',
+          ExactDecimal.from(b)
+        );
       }
     }
 
-    // Tier 4: Negative results, mixed decimals, close margins
+    // Tier 4: Master: Negative results, mixed decimals, close comparisons
     const roll = this.rng.next();
-    if (roll < 0.4) {
-      // Subtraction producing negative result
-      const a = this.rng.nextInt(5, 25);
-      const diff = this.rng.nextInt(6, 25);
+    if (roll < 0.35) {
+      // Negative integer subtraction
+      const a = this.rng.nextInt(5, 20);
+      const diff = this.rng.nextInt(6, 20);
       const b = a + diff;
-      const val = ExactDecimal.from(a).subtract(ExactDecimal.from(b));
-      return { expr: `${a} - ${b}`, value: val };
-    } else if (roll < 0.7) {
+      return createArithmeticExpression(exprId, ExactDecimal.from(a), '−', ExactDecimal.from(b));
+    } else if (roll < 0.65) {
       // Negative decimal subtraction
-      const aStr = `${this.rng.nextInt(2, 10)}.${this.rng.pick([2, 5, 8])}`;
-      const bInt = this.rng.nextInt(12, 28);
-      const val = ExactDecimal.from(aStr).subtract(ExactDecimal.from(bInt));
-      return { expr: `${aStr} - ${bInt}`, value: val };
+      const aInt = this.rng.nextInt(2, 9);
+      const aFrac = this.rng.pick([2, 5]);
+      const aStr = `${aInt}.${aFrac}`;
+      const bInt = this.rng.nextInt(10, 24);
+      return createArithmeticExpression(
+        exprId,
+        ExactDecimal.from(aStr),
+        '−',
+        ExactDecimal.from(bInt)
+      );
     } else {
-      // Mixed multiplication
-      const aStr = this.rng.pick(['2.4', '1.6', '3.2', '1.8']);
+      // Decimal multiplication or addition
+      const aStr = this.rng.pick(['1.6', '2.4', '3.2', '1.8']);
       const b = this.rng.nextInt(3, 7);
-      const val = ExactDecimal.from(aStr).multiply(ExactDecimal.from(b));
-      return { expr: `${aStr} × ${b}`, value: val };
+      return createArithmeticExpression(
+        exprId,
+        ExactDecimal.from(aStr),
+        '×',
+        ExactDecimal.from(b)
+      );
     }
   }
 
   /**
-   * Generates a complete MathQuestion with 3 distinct bubbles, guaranteed unique values.
+   * Generates a complete MathQuestion with exactly 3 bubbles,
+   * guaranteed strictly unique numerical values and display expressions.
    */
   generateQuestion(questionIndex: number): MathQuestion {
-    const bubbles: MathBubble[] = [];
-    const usedValues: ExactDecimal[] = [];
+    const config = getDifficultyConfig(questionIndex);
+    const expressions: ArithmeticExpression[] = [];
 
     let attempts = 0;
-    while (bubbles.length < 3 && attempts < 100) {
-      attempts++;
-      const { expr, value } = this.generateExpression(questionIndex);
+    const maxAttempts = 120;
 
-      // Verify uniqueness
-      const isDuplicate = usedValues.some((v) => v.equals(value));
-      if (!isDuplicate) {
-        usedValues.push(value);
-        bubbles.push({
-          id: `bubble_${bubbles.length}`,
-          expression: expr,
-          value: value,
-        });
+    while (expressions.length < 3 && attempts < maxAttempts) {
+      attempts++;
+      const candidate = this.generateExpressionCandidate(config, expressions.length);
+
+      // Verify no duplicate value
+      const hasDuplicateValue = expressions.some((e) => e.value.equals(candidate.value));
+      // Verify no duplicate expression display string
+      const hasDuplicateExpr = expressions.some(
+        (e) => e.displayString === candidate.displayString
+      );
+
+      if (!hasDuplicateValue && !hasDuplicateExpr) {
+        expressions.push(candidate);
       }
     }
 
-    // Fallback if needed to guarantee 3 unique bubbles
-    while (bubbles.length < 3) {
-      const fallbackVal = ExactDecimal.from(100 + bubbles.length * 10);
-      bubbles.push({
-        id: `bubble_${bubbles.length}`,
-        expression: `${50 + bubbles.length * 5} + ${50 + bubbles.length * 5}`,
-        value: fallbackVal,
-      });
+    // Safe deterministic fallback if bounded attempts could not produce 3 unique expressions
+    while (expressions.length < 3) {
+      const idx = expressions.length;
+      const fallbackA = 100 + idx * 30;
+      const fallbackB = 5 + idx * 5;
+      const fallbackExpr = createArithmeticExpression(
+        `fallback_${idx}`,
+        ExactDecimal.from(fallbackA),
+        '+',
+        ExactDecimal.from(fallbackB)
+      );
+      // Double check uniqueness
+      if (!expressions.some((e) => e.value.equals(fallbackExpr.value))) {
+        expressions.push(fallbackExpr);
+      } else {
+        const offsetFallback = createArithmeticExpression(
+          `fallback_offset_${idx}`,
+          ExactDecimal.from(fallbackA + 500),
+          '+',
+          ExactDecimal.from(fallbackB)
+        );
+        expressions.push(offsetFallback);
+      }
     }
 
-    // Determine correct order by sorting strictly ascending
+    // Wrap into MathBubble structures
+    const bubbles: MathBubble[] = expressions.map((expr, i) => ({
+      id: `bubble_${i}`,
+      expression: expr.displayString,
+      arithmeticExpression: expr,
+      value: expr.value,
+      displayString: expr.displayString,
+    }));
+
+    // Determine correct order by sorting strictly ascending by value
     const sorted = [...bubbles].sort((a, b) => a.value.compareTo(b.value));
     const correctOrderIds = sorted.map((b) => b.id);
 
-    // Shuffle the display array so order isn't predictably left-to-right
+    // Shuffle the display array so ascending order isn't predictable by DOM position
     const displayBubbles = this.rng.shuffle([...bubbles]);
 
     return {
       index: questionIndex,
       bubbles: displayBubbles,
       correctOrderIds,
+      difficultyTier: config.tier,
     };
   }
 
