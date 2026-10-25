@@ -1,0 +1,176 @@
+/* Invisible Walls Styles */
+
+.walls-game-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.walls-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.25rem;
+}
+
+.walls-level-badge {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent-indigo);
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+}
+
+.walls-keys-badge {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* 10x10 Maze Board */
+.walls-board-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 380px;
+  aspect-ratio: 1 / 1;
+  padding: 6px;
+  background: #0b1120;
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg), inset 0 0 16px rgba(0, 0, 0, 0.7);
+  border: 1px solid var(--border-subtle);
+}
+
+.walls-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  grid-template-rows: repeat(10, 1fr);
+  width: 100%;
+  height: 100%;
+  gap: 2px;
+  position: relative;
+}
+
+.maze-cell {
+  background: rgba(30, 41, 59, 0.6);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-size: 1rem;
+}
+
+.maze-cell.is-start {
+  background: rgba(6, 182, 212, 0.2);
+  border: 1px dashed rgba(6, 182, 212, 0.4);
+}
+
+.maze-cell.is-exit {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.maze-cell.is-exit.locked {
+  background: rgba(244, 63, 94, 0.15);
+  border-color: rgba(244, 63, 94, 0.3);
+}
+
+/* Player Avatar */
+.player-avatar {
+  width: 75%;
+  height: 75%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #38bdf8, #6366f1);
+  box-shadow: 0 0 12px var(--accent-cyan-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.75rem;
+  z-index: 10;
+  transition: all 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Wall Collision Shockwave */
+.wall-shockwave {
+  position: absolute;
+  background: var(--accent-rose);
+  box-shadow: 0 0 16px var(--accent-rose);
+  z-index: 30;
+  animation: shockwavePulse 0.4s ease-out forwards;
+}
+
+.wall-shockwave.horizontal {
+  height: 4px;
+  border-radius: 2px;
+}
+
+.wall-shockwave.vertical {
+  width: 4px;
+  border-radius: 2px;
+}
+
+@keyframes shockwavePulse {
+  0% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+/* Virtual D-Pad for Mobile Controls */
+.dpad-container {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  grid-template-rows: repeat(3, 56px);
+  gap: 8px;
+  margin-top: 0.5rem;
+  justify-content: center;
+}
+
+.dpad-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  color: var(--text-primary);
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+  touch-action: manipulation;
+}
+
+.dpad-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-medium);
+  transform: translateY(-1px);
+}
+
+.dpad-btn:active {
+  background: var(--bg-elevated);
+  transform: translateY(1px);
+  border-color: var(--border-focus);
+}
+
+.dpad-up { grid-column: 2; grid-row: 1; }
+.dpad-left { grid-column: 1; grid-row: 2; }
+.dpad-center { grid-column: 2; grid-row: 2; background: transparent; border: none; box-shadow: none; cursor: default; }
+.dpad-right { grid-column: 3; grid-row: 2; }
+.dpad-down { grid-column: 2; grid-row: 3; }

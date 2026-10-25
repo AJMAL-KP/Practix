@@ -1,0 +1,230 @@
+/* Rotate the Path Styles */
+
+.path-game-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  gap: 1rem;
+  align-items: center;
+}
+
+.path-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.25rem;
+}
+
+.path-level-badge {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent-amber);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+}
+
+.path-timer-badge {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+}
+
+/* 9x9 Board Wrapper */
+.path-board-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 1 / 1;
+  padding: 8px;
+  background: #0b1120;
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg), inset 0 0 12px rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--border-subtle);
+}
+
+/* 9x9 Grid */
+.path-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  width: 100%;
+  height: 100%;
+  gap: 2px;
+  position: relative;
+}
+
+/* 3x3 Region Overlay / Borders */
+.region-cell {
+  position: relative;
+  border-radius: 4px;
+  background: #1e293b;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+/* 3x3 Region Boundaries */
+.region-cell[data-col="2"],
+.region-cell[data-col="5"] {
+  margin-right: 4px;
+}
+
+.region-cell[data-row="2"],
+.region-cell[data-row="5"] {
+  margin-bottom: 4px;
+}
+
+/* Active Selected 3x3 Region Highlight */
+.region-cell.region-selected {
+  outline: 2px solid #eab308;
+  outline-offset: -1px;
+  z-index: 5;
+}
+
+/* Corner highlights for the selected 3x3 region */
+.region-cell.region-selected[data-local-r="0"][data-local-c="0"] {
+  box-shadow: inset 4px 4px 0 #eab308;
+}
+.region-cell.region-selected[data-local-r="0"][data-local-c="2"] {
+  box-shadow: inset -4px 4px 0 #eab308;
+}
+.region-cell.region-selected[data-local-r="2"][data-local-c="0"] {
+  box-shadow: inset 4px -4px 0 #eab308;
+}
+.region-cell.region-selected[data-local-r="2"][data-local-c="2"] {
+  box-shadow: inset -4px -4px 0 #eab308;
+}
+
+/* Path SVG / Corridors */
+.tile-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.corridor-bg {
+  fill: #475569;
+}
+
+.corridor-arrow {
+  fill: #f8fafc;
+}
+
+/* Mouse and Cheese Markers */
+.mouse-marker {
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.4rem;
+  z-index: 20;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+.cheese-marker {
+  position: absolute;
+  right: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.4rem;
+  z-index: 20;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+/* Path Testing Highlight */
+.region-cell.path-active {
+  background: rgba(6, 182, 212, 0.5) !important;
+  box-shadow: 0 0 12px var(--accent-cyan);
+}
+
+.region-cell.path-failure {
+  background: rgba(244, 63, 94, 0.7) !important;
+  box-shadow: 0 0 16px var(--accent-rose);
+  animation: shake 0.35s ease-in-out;
+}
+
+/* Controls Toolbar */
+.path-controls-bar {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 420px;
+  justify-content: space-between;
+}
+
+.path-ctrl-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.65rem 0.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.path-ctrl-btn .btn-icon-text {
+  font-size: 1.25rem;
+}
+
+.path-ctrl-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-medium);
+  transform: translateY(-1px);
+}
+
+.path-ctrl-btn.btn-test {
+  background: linear-gradient(135deg, var(--accent-emerald), #059669);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 14px var(--accent-emerald-glow);
+}
+
+.path-ctrl-btn.btn-test:hover {
+  filter: brightness(1.1);
+}
+
+/* Feedback Banner */
+.path-feedback-banner {
+  width: 100%;
+  max-width: 420px;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.path-feedback-banner.error {
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: #fda4af;
+}
+
+.path-feedback-banner.success {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+}

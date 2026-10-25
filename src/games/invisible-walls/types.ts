@@ -1,0 +1,84 @@
+export interface Coordinate {
+  row: number; // 0 to 9
+  col: number; // 0 to 9
+}
+
+export type MoveDirection = 'up' | 'down' | 'left' | 'right';
+
+export interface WallBoundary {
+  // Identifies a wall between (r1, c1) and (r2, c2)
+  r1: number;
+  c1: number;
+  r2: number;
+  c2: number;
+}
+
+export interface InvisibleMaze {
+  size: number; // 10
+  start: Coordinate;
+  exit: Coordinate;
+  keys: Coordinate[];
+  // Set of wall keys formatted as `${minR},${minC}-${maxR},${maxC}`
+  walls: Set<string>;
+}
+
+export interface InvisibleWallsStats {
+  levelsCompleted: number; // 0 to 5
+  keysCollected: number;
+  wallCollisions: number;
+  resets: number;
+  totalTimeMs: number;
+  score: number;
+}
+
+export type InvisibleWallsState =
+  | { status: 'idle' }
+  | { status: 'ready'; level: number }
+  | {
+      status: 'playing';
+      level: number;
+      maze: InvisibleMaze;
+      playerPos: Coordinate;
+      keysRequired: number;
+      collectedKeyIndices: number[]; // indices into maze.keys
+      remainingMs: number;
+      collisions: number;
+      resets: number;
+    }
+  | {
+      status: 'wall_collision';
+      level: number;
+      maze: InvisibleMaze;
+      playerPos: Coordinate;
+      hitWall: WallBoundary;
+      remainingMs: number;
+      collisions: number;
+      resets: number;
+    }
+  | {
+      status: 'locked_exit_feedback';
+      level: number;
+      maze: InvisibleMaze;
+      playerPos: Coordinate;
+      remainingMs: number;
+    }
+  | {
+      status: 'level_complete';
+      level: number;
+      maze: InvisibleMaze;
+      timeSpentMs: number;
+    }
+  | {
+      status: 'level_transition';
+      completedLevel: number;
+      nextLevel: number;
+    }
+  | {
+      status: 'timeout';
+      level: number;
+      stats: InvisibleWallsStats;
+    }
+  | {
+      status: 'final_results';
+      stats: InvisibleWallsStats;
+    };
